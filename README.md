@@ -1,4 +1,4 @@
-# Margen Abastecimiento — GLP (Solgas)
+# Margen de Abastecimiento | Calculadora — GLP (Solgas)
 
 Página interna de Abastecimiento para proyectar y comparar el margen de
 importación de GLP. Reemplaza un archivo Excel rústico usado para el mismo fin.
@@ -24,7 +24,8 @@ Pestañas:
    vigente** (con confirmación) la reemplaza para todos.
 3. **Comparación de proveedores** — tabla editable con transacciones Ene–Sep 2026.
 4. **RAD** — tabla de referencia 2024–2026 (solo lectura).
-5. **Parámetros** — prima del contrato de Geogas (US$/TM).
+5. **Parámetros** — prima base de Geogas (contrato) y prima base sugerida de
+   Trafigura (US$/TM); se guardan solas y se comparten.
 
 ## Configuración de Supabase (una sola vez)
 
@@ -45,8 +46,10 @@ publicación son públicos, esos datos son públicos.
 - `Margen Cabotaje = RAD × Volumen Cabotaje Plus`
 - `DELTA VS 40 local = (RAD − 40) × Cabotaje`
 - `DELTA VS 40 total = (RAD − 40) × (Volumen + Cabotaje)`
-- Prima de un buque = prima base (contrato Geogas o promedio ponderado del
-  histórico del proveedor) + demurrage + procura + otros gastos.
+- Prima de un buque = prima base + demurrage + procura + otros gastos. La prima
+  base es automática (contrato Geogas, prima sugerida de Trafigura o promedio
+  ponderado del histórico de los demás proveedores) y se puede fijar a mano en
+  cada buque.
 
 ## Pendiente / abierto
 

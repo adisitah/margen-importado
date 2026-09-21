@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Margen Abastecimiento</title>
+<title>Margen de Abastecimiento | Calculadora</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -262,7 +262,7 @@
 <div class="wrap">
 
   <header class="top">
-    <h1>Margen Abastecimiento</h1>
+    <h1>Margen de Abastecimiento | Calculadora</h1>
   </header>
 
   <nav class="tabs">
@@ -334,7 +334,12 @@
       <div class="tcrow">
         <label>Prima contrato Geogas (US$/TM)</label>
         <input type="number" id="contratoGeogas" class="mono" value="114" step="0.5">
-        <span class="unit">Con buques: Geogas usa este contrato; otros proveedores, el promedio ponderado de su histórico.</span>
+        <span class="unit">Con buques: es la prima base de Geogas.</span>
+      </div>
+      <div class="tcrow">
+        <label>Prima base sugerida Trafigura (US$/TM)</label>
+        <input type="number" id="primaTrafigura" class="mono" value="175" step="0.5">
+        <span class="unit">Con buques: es la prima base de Trafigura. Otros proveedores usan el promedio ponderado de su histórico. En cada buque se puede fijar otra prima a mano.</span>
       </div>
     </div>
   </section>
@@ -478,6 +483,7 @@ window.addEventListener("error", function(e){
       if (Array.isArray(saved.rad)) st.rad = saved.rad;
       if (saved.ships && typeof saved.ships === "object" && !Array.isArray(saved.ships)) st.ships = saved.ships;
       if (typeof saved.contratoGeogas === "number") st.contratoGeogas = saved.contratoGeogas;
+      if (typeof saved.primaTrafigura === "number") st.primaTrafigura = saved.primaTrafigura;
       if (!legacy && saved.vigente && typeof saved.vigente === "object"){
         st.vigente = {savedAt: typeof saved.vigente.savedAt === "string" ? saved.vigente.savedAt : "",
           shipDetail: Array.isArray(saved.vigente.shipDetail) ? saved.vigente.shipDetail : []};
@@ -595,6 +601,7 @@ window.addEventListener("error", function(e){
   // Buques por mes: proveedor + capacidad. Prima = contrato (Geogas) o histórico ponderado (otros).
   var MAX_SHIPS = 3;
   if (typeof state.contratoGeogas !== "number") state.contratoGeogas = 114;
+  if (typeof state.primaTrafigura !== "number") state.primaTrafigura = 175;
   state.ships = state.ships || {};
 
   function esc(s){
@@ -634,11 +641,18 @@ window.addEventListener("error", function(e){
     });
     return n ? {avg: w / tot, n: n, last: last} : null;
   }
-  function primaFor(it){
-    if (it.prov === "__otro") return it.manual > 0 ? {v: it.manual, txt: "manual"} : null;
+  // Prima base automática: contrato (Geogas), prima sugerida (Trafigura) o promedio ponderado del histórico del proveedor
+  function autoPrima(it){
+    if (it.prov === "__otro") return null;
     if (sameProv(it.prov, "Geogas")) return {v: state.contratoGeogas, txt: "contrato"};
+    if (sameProv(it.prov, "Trafigura")) return {v: state.primaTrafigura, txt: "sugerida"};
     var h = histPrima(it.prov);
     return h ? {v: h.avg, txt: "histórico pond., "+h.n+" op., últ. "+fmt(h.last,{dec:1})} : null;
+  }
+  // Prima base del buque: la fijada a mano en el detalle del mes; si está vacía, la automática
+  function primaFor(it){
+    if (it.manual > 0) return {v: it.manual, txt: "fijada a mano"};
+    return autoPrima(it);
   }
   // Prima total del buque = prima base (contrato / histórico) + demurrage + procura + otros gastos
   function shipCalc(it){
@@ -697,7 +711,7 @@ window.addEventListener("error", function(e){
       h += "<div class='shipcard'><h4>Buque "+(k+1)+"</h4><div class='shipgrid'>" +
         dlgField("Proveedor", "<select data-f='prov'"+at+">"+provOptions+"</select>") +
         dlgField("Capacidad (TM)", "<input type='number' data-f='cap'"+at+" value='"+(it.cap||"")+"' placeholder='0'>") +
-        dlgField("Prima manual (US$/TM)", "<input type='number' step='0.01' data-f='manual'"+at+" value='"+(it.manual||"")+"' placeholder='0'>", "dlgManual"+k, true) +
+        dlgField("Prima base (US$/TM)", "<input type='number' step='0.01' data-f='manual'"+at+" value='"+(it.manual||"")+"' placeholder='Automática'>") +
         dlgField("Demurrage estimado (US$/TM)", "<input type='number' step='0.01' data-f='dem'"+at+" value='"+(it.dem||"")+"' placeholder='0'>") +
         dlgField("Procura (US$/TM)", "<input type='number' step='0.01' data-f='procura'"+at+" value='"+(it.procura||"")+"' placeholder='0'>") +
         dlgField("Otros gastos (US$/TM)", "<input type='number' step='0.01' data-f='otros'"+at+" value='"+(it.otros||"")+"' placeholder='0'>") +
@@ -735,11 +749,11 @@ window.addEventListener("error", function(e){
 
     if (dlg.open && dlgIdx === idx){
       for (var j=0;j<s.n;j++){
-        var cj = calcs[j];
-        document.getElementById("dlgManual"+j).style.display = s.items[j].prov === "__otro" ? "" : "none";
+        var cj = calcs[j], auto = autoPrima(s.items[j]);
+        dlg.querySelector("input[data-f='manual'][data-k='"+j+"']").placeholder = auto ? "Auto: " + fmt(auto.v,{dec:2}) : "Ingresa la prima";
         document.getElementById("dlgRef"+j).textContent = cj.p
-          ? "Base " + fmt(cj.p.v,{dec:2}) + " (" + cj.p.txt + ") + gastos " + fmt(cj.extra,{dec:2}) + " = Prima total " + fmt(cj.total,{dec:2}) + " US$/TM"
-          : (s.items[j].prov === "__otro" ? "Ingresa la prima manual" : "Sin histórico para este proveedor");
+          ? "Base " + fmt(cj.p.v,{dec:2}) + " (" + cj.p.txt + (s.items[j].manual > 0 && auto ? "; automática " + fmt(auto.v,{dec:2}) : "") + ") + gastos " + fmt(cj.extra,{dec:2}) + " = Prima total " + fmt(cj.total,{dec:2}) + " US$/TM"
+          : (s.items[j].prov === "__otro" ? "Ingresa la prima base" : "Sin histórico para este proveedor: ingresa la prima base");
       }
       document.getElementById("dlgSum").textContent = s.n && vol
         ? "Volumen del mes: " + fmt(vol) + " TM · Prima total ponderada: " + fmt(prima,{dec:2}) + " US$/TM" : "";
@@ -773,7 +787,11 @@ window.addEventListener("error", function(e){
     var t = e.target, f = t.dataset.f;
     if (!f) return;
     var it = getShips(dlgIdx).items[parseInt(t.dataset.k, 10)];
-    if (f === "prov") it.prov = t.value; else it[f] = parseFloat(t.value) || 0;
+    if (f === "prov"){
+      it.prov = t.value; it.manual = 0;   // al cambiar de proveedor vuelve la prima automática
+      var mi = dlg.querySelector("input[data-f='manual'][data-k='" + t.dataset.k + "']");
+      if (mi) mi.value = "";
+    } else it[f] = parseFloat(t.value) || 0;
     updateShips(dlgIdx);
     persist();
   }
@@ -783,13 +801,29 @@ window.addEventListener("error", function(e){
   document.getElementById("dlgOk").addEventListener("click", function(){ dlg.close(); });
   dlg.addEventListener("click", function(e){ if (e.target === dlg) dlg.close(); });   // clic en el fondo
 
-  var contratoInput = document.getElementById("contratoGeogas");
-  contratoInput.value = state.contratoGeogas;
-  contratoInput.addEventListener("input", function(){
-    state.contratoGeogas = parseFloat(contratoInput.value) || 0;
-    projMonths.forEach(function(pm){ updateShips(pm.idx); });
-    persist();
-  });
+  // Parámetros de prima base: se guardan solos (compartidos) poco después de editarlos
+  var paramTimer = null;
+  function scheduleParams(){
+    clearTimeout(paramTimer);
+    paramTimer = setTimeout(function(){
+      paramTimer = null; remote.saving = true; renderVigente();
+      remoteSave().then(function(){ remote.state = "ok"; remote.hasRow = true; remote.saving = false; renderVigente(); })
+        .catch(function(e){ remote.state = "error"; remote.msg = e.message; remote.saving = false; renderVigente(); showToast("No se pudo guardar el parámetro (" + e.message + ").", "err"); });
+    }, 1200);
+  }
+  function bindParam(id, key){
+    var el = document.getElementById(id);
+    el.value = state[key];
+    el.addEventListener("input", function(){
+      state[key] = parseFloat(el.value) || 0;
+      projMonths.forEach(function(pm){ updateShips(pm.idx); });
+      persist();
+      scheduleParams();
+    });
+    return el;
+  }
+  var contratoInput = bindParam("contratoGeogas", "contratoGeogas");
+  var trafiguraInput = bindParam("primaTrafigura", "primaTrafigura");
 
   // Simular arma un borrador y lo compara con la vigente; solo "Guardar como vigente" lo reemplaza
   document.getElementById("btnSimular").addEventListener("click", function(){
@@ -1151,7 +1185,7 @@ window.addEventListener("error", function(e){
     R[17][13] = F("SUM(B17:M17)", r2(sdt), X_TINT);
 
     var rows = [[cell("Margen de Importación GLP — Histórico 2026", X_TXT)],
-      ["Generado desde Margen Abastecimiento · Ene–Ago cerrado (verde) · Set–Dic proyectado"], [], head];
+      ["Generado desde Margen de Abastecimiento | Calculadora · Ene–Ago cerrado (verde) · Set–Dic proyectado"], [], head];
     for (var r = 5; r <= 17; r++) rows.push(R[r]);
     rows.push([], [], [cell("Comparación de proveedores por transacción", X_TXT)],
       ["Margen unitario = Prima Plus − Prima Buque · Total = Margen unitario × TMs"], []);
@@ -1215,7 +1249,7 @@ window.addEventListener("error", function(e){
       .then(function(rows){ return rows && rows[0] ? rows[0] : null; });
   }
   function remoteSave(){
-    var datos = {hist: state.hist, shipDetail: state.vigente.shipDetail, contratoGeogas: state.contratoGeogas, savedAt: state.vigente.savedAt};
+    var datos = {hist: state.hist, shipDetail: state.vigente.shipDetail, contratoGeogas: state.contratoGeogas, primaTrafigura: state.primaTrafigura, savedAt: state.vigente.savedAt};
     return fetch(SB.url + "/rest/v1/" + SB.table + "?on_conflict=id", {
       method: "POST",
       headers: sbHeaders({"Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal"}),
@@ -1233,9 +1267,15 @@ window.addEventListener("error", function(e){
       d.importado = numArr(h.importado, d.importado); d.margenUS = numArr(h.margenUS, d.margenUS, true);
       d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab);
     }
-    if (typeof datos.contratoGeogas === "number"){
-      state.contratoGeogas = datos.contratoGeogas;
-      if (document.activeElement !== contratoInput) contratoInput.value = state.contratoGeogas;
+    if (!paramTimer){   // si hay un parámetro propio pendiente de guardar, no se pisa
+      if (typeof datos.contratoGeogas === "number"){
+        state.contratoGeogas = datos.contratoGeogas;
+        if (document.activeElement !== contratoInput) contratoInput.value = state.contratoGeogas;
+      }
+      if (typeof datos.primaTrafigura === "number"){
+        state.primaTrafigura = datos.primaTrafigura;
+        if (document.activeElement !== trafiguraInput) trafiguraInput.value = state.primaTrafigura;
+      }
     }
     state.vigente = {savedAt: typeof datos.savedAt === "string" ? datos.savedAt : "", shipDetail: Array.isArray(datos.shipDetail) ? datos.shipDetail : []};
   }
