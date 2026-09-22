@@ -51,8 +51,8 @@ publicación son públicos, esos datos son públicos.
 ## Fórmulas (de la planilla)
 
 - `Margen unitario = Prima Pluspetrol − Prima all in Importado`
-- `Margen importado US$ = Margen unitario × Volumen` (Ene–Ago: valor fijo de la planilla)
-- `Total Soles = Margen importado US$ × TC del mes`
+- `Margen del importado US$ = Margen unitario × Volumen` (Ene–Ago: valor fijo de la planilla)
+- `Total Soles = Margen del importado US$ × TC del mes`
 - `Margen Cabotaje Pluspetrol = RAD × Volumen Cabotaje Pluspetrol`
 - `DELTA VS 40 local = (RAD − 40) × Cabotaje`
 - `DELTA VS 40 total = (RAD − 40) × (Volumen + Cabotaje)`
