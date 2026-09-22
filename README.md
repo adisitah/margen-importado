@@ -19,11 +19,11 @@ Pestañas:
    y Margen Terminal Ene–Dic proyectado (despacho terminal); cada una con el
    total en miles de US$ y el margen unitario US$/TM —, la tabla mensual solo
    en USD y en miles
-   (volumen y despacho terminal en miles de TM; margen importado, margen
-   despacho terminal y DELTA VS 40 en miles de US$; las primas, el margen
-   unitario y el RAD se quedan en US$/TM, sin escalar — sin tipo de cambio,
-   soles, ni las filas de volumen/margen de cabotaje Pluspetrol, aunque el
-   cabotaje sigue sumando internamente en DELTA VS 40), la tabla de
+   (volumen y despacho terminal en miles de TM; margen importado y margen
+   despacho terminal en miles de US$; las primas, el margen unitario y el RAD
+   se quedan en US$/TM, sin escalar — sin tipo de cambio, soles, ni las filas
+   de volumen/margen de cabotaje Pluspetrol ni DELTA VS 40, aunque el
+   cabotaje y el DELTA VS 40 se siguen calculando internamente), la tabla de
    comparación de proveedores por transacción (solo lectura, en unidades
    reales, no en miles) y el detalle de buques. Incluye **Descargar Excel**
    (esa hoja siempre queda en unidades reales, con tipo de cambio y soles,
