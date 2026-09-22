@@ -14,18 +14,28 @@ conexión, usa `localStorage` del navegador como respaldo.
 Pestañas:
 
 1. **Proyección** (la que ve el gerente) — estado de la proyección vigente
-   (fecha de guardado y conexión), tarjetas resumen, la tabla mensual con las
-   filas de la planilla (TC, volumen, primas, margen importado, Total Soles,
-   RAD, cabotaje, DELTA VS 40) y el detalle de buques. Incluye
-   **Descargar Excel**. Se actualiza sola cada minuto.
+   (fecha de guardado y conexión), 2 tarjetas resumen (Margen importado YTD
+   Enero–Agosto y Margen Set–Dic proyectado, cada una con el total en miles de
+   US$ y el margen unitario US$/TM), la tabla mensual solo en USD (volumen,
+   primas, margen unitario, margen importado, RAD, cabotaje Pluspetrol,
+   DELTA VS 40 — sin tipo de cambio ni soles), la tabla de comparación de
+   proveedores por transacción (solo lectura, mismo contenido que el Excel) y
+   el detalle de buques. Incluye **Descargar Excel** (esa hoja sí conserva el
+   tipo de cambio y el total en soles, igual que la planilla original).
+   Se actualiza sola cada minuto.
 2. **Nueva simulación** — por mes (Set–Dic): buques (proveedor, capacidad,
-   demurrage, procura, otros), volumen, cabotaje, primas, TC y RAD. **Simular**
-   muestra el resultado comparado contra la vigente; solo **Guardar como
-   vigente** (con confirmación) la reemplaza para todos.
-3. **Comparación de proveedores** — tabla editable con transacciones Ene–Sep 2026.
-4. **RAD** — tabla de referencia 2024–2026 (solo lectura).
-5. **Parámetros** — prima base de Geogas (contrato) y prima base sugerida de
+   demurrage, procura, otros), volumen, cabotaje Pluspetrol, primas y RAD.
+   **Simular** muestra el resultado comparado contra la vigente; solo
+   **Guardar como vigente** (con confirmación) la reemplaza para todos.
+3. **RAD** — tabla de referencia 2024–2026 (solo lectura).
+4. **Parámetros** — prima base de Geogas (contrato) y prima base sugerida de
    Trafigura (US$/TM); se guardan solas y se comparten.
+
+La tabla de comparación de proveedores (transacciones que alimentan la prima
+histórica de cada proveedor) ya no es editable desde la página; sus datos son
+los de `defaultState.comp` en `index.html` y, si se editaron antes desde la
+pestaña que existía, cada navegador solo guardaba su propia copia (nunca se
+compartió por Supabase). Para actualizarla hay que editar `index.html`.
 
 ## Configuración de Supabase (una sola vez)
 
@@ -40,7 +50,7 @@ publicación son públicos, esos datos son públicos.
 
 ## Fórmulas (de la planilla)
 
-- `Margen unitario = Prima PPC − Precio Importado`
+- `Margen unitario = Prima Pluspetrol − Prima all in Importado`
 - `Margen importado US$ = Margen unitario × Volumen` (Ene–Ago: valor fijo de la planilla)
 - `Total Soles = Margen importado US$ × TC del mes`
 - `Margen Cabotaje Pluspetrol = RAD × Volumen Cabotaje Pluspetrol`
@@ -56,5 +66,6 @@ publicación son públicos, esos datos son públicos.
 - Revisar los promedios históricos de proveedores con primas muy distintas al
   resto (posible otra base de cálculo) antes de simular con ellos.
 - Decidir la fuente de la tabla de proveedores (la planilla trae menos
-  transacciones que la pestaña Comparación).
+  transacciones que la tabla de comparación) y si conviene volver a hacerla
+  editable (y, en ese caso, compartirla por Supabase).
 - Sin clave ni historial: cualquiera con el enlace puede sobrescribir la vigente.

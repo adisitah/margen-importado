@@ -235,13 +235,14 @@
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--muted); }
   .dot.on { background: var(--pos); } .dot.off { background: var(--neg); } .dot.wait { background: var(--accent); }
 
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
-  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
+  .kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 260px)); gap: 14px; margin-bottom: 18px; }
+  @media (max-width: 560px) { .kpis { grid-template-columns: 1fr; } }
   .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; box-shadow: var(--shadow); }
   .kpi .kl { font-size: 12px; color: var(--muted); }
   .kpi .kv { font-family: "IBM Plex Mono", monospace; font-size: 21px; font-weight: 600; margin: 4px 0 2px; }
   .kpi .kv.neg { color: var(--neg); } .kpi .kv.pos { color: var(--pos); }
+  .kpi .ku { font-family: "IBM Plex Mono", monospace; font-size: 13px; font-weight: 600; margin: 0 0 2px; }
+  .kpi .ku.neg { color: var(--neg); } .kpi .ku.pos { color: var(--pos); }
   .kpi .ks { font-size: 11.5px; color: var(--muted); }
 
   details.vigdet summary { cursor: pointer; font-size: 14px; font-weight: 600; }
@@ -268,7 +269,6 @@
   <nav class="tabs">
     <button class="tab-btn active" data-tab="proy">Proyección</button>
     <button class="tab-btn" data-tab="sim">Nueva simulación</button>
-    <button class="tab-btn" data-tab="comp">Comparación de proveedores</button>
     <button class="tab-btn" data-tab="rad">RAD (referencia)</button>
     <button class="tab-btn" data-tab="param">Parámetros</button>
   </nav>
@@ -281,6 +281,16 @@
       <h2>Data histórica mensual<span class="legend-lock">🔒 Ene–Ago cerrado</span><span class="legend-proj"><span class="sw"></span>Set–Dic proyectado</span></h2>
       <div class="tablewrap">
         <table class="hist mono" id="histTable"></table>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Comparación de proveedores por transacción</h2>
+      <p class="sub">Margen unitario = Prima Plus − Prima Buque · Total = Margen unitario × TMs. Mismo contenido que la hoja del Excel.</p>
+      <div class="tablewrap">
+        <table class="mono" id="compRefTable">
+          <thead><tr><th style="text-align:left">Mes</th><th>TMs</th><th>Prima Plus</th><th>Prima Buque</th><th>Margen unitario</th><th>Total US$</th><th style="text-align:left">Proveedor</th></tr></thead>
+          <tbody id="compRefBody"></tbody>
+        </table>
       </div>
     </div>
     <details class="card vigdet">
@@ -297,33 +307,6 @@
       <div class="simcols" id="simCols"></div>
       <button class="addbtn" id="btnSimular" style="border-style:solid;border-color:var(--accent);color:var(--accent-ink);font-weight:600;">Simular →</button>
     </div>
-  </section>
-
-  <!-- COMPARACIÓN -->
-  <section class="panel" id="panel-comp">
-    <div class="card">
-      <h2>Comparación entre proveedores</h2>
-      <p class="sub">Margen unitario = Prima Plus − Prima Buque. Total = Margen unitario × TMs. Verde = mejor margen total, rojo = peor.</p>
-      <div class="tablewrap">
-        <table class="mono provtable" id="compTable">
-          <thead>
-            <tr>
-              <th style="text-align:left">Proveedor</th>
-              <th>Fecha</th>
-              <th>TMs</th>
-              <th>Prima Plus</th>
-              <th>Prima Buque</th>
-              <th>Margen unitario</th>
-              <th>Total US$</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="compBody"></tbody>
-        </table>
-      </div>
-      <button class="addbtn" id="addProvRow">+ Agregar proveedor</button>
-    </div>
-    <footer class="note">22 transacciones reales Ene–Sep 2026. Prima Plus corresponde a la Prima CFR PPC más cercana a la fecha de cada compra.</footer>
   </section>
 
   <!-- PARÁMETROS -->
@@ -404,7 +387,7 @@ window.addEventListener("error", function(e){
   // ---------- STATE ----------
   var defaultState = {
     // Fuente: planilla margen-importacion-historico.xlsx. margenUS = "Margen importado US$" fijo de la planilla
-    // (null = se calcula como (PPC − Importado) × Volumen; pasa a null al simular o editar el mes).
+    // (null = se calcula como (Pluspetrol − Importado) × Volumen; pasa a null al simular o editar el mes).
     hist: {
       tc:        [3.42,3.42,3.42,3.42,3.42,3.40,3.39,3.37,3.37,3.40,3.37,3.37],
       volumen:   [22800,15300,38150,39781,38615,38090,41163,41000,41000,33000,38000,39000],
@@ -518,13 +501,11 @@ window.addEventListener("error", function(e){
 
   // Filas: input = editable en Set–Dic (cerrado en Ene–Ago) · calc = se recalcula · total = suma en la última columna
   var HROWS = [
-    {k: "tc",        label: "Tipo de cambio (S/ por US$)", type: "input", dec: 2},
     {k: "volumen",   label: "Volumen (TM)",                type: "input", dec: 0, total: "vol"},
-    {k: "ppc",       label: "Prima PPC (US$/TM)",          type: "input", dec: 2, zero: true},
-    {k: "importado", label: "Precio Importado (US$/TM)",   type: "input", dec: 2, zero: true},
+    {k: "ppc",       label: "Prima Pluspetrol (US$/TM)",   type: "input", dec: 2, zero: true},
+    {k: "importado", label: "Prima all in Importado (US$/TM)", type: "input", dec: 2, zero: true},
     {k: "mu",        label: "Margen unitario (US$/TM)",    type: "calc",  dec: 2},
     {k: "mUS",       label: "Margen importado US$",        type: "calc",  dec: 0, total: "mUS"},
-    {k: "soles",     label: "Total Soles S/",              type: "calc",  dec: 0, total: "soles"},
     {k: "fee",       label: "Fee Terminal:",               type: "section"},
     {k: "rad",       label: "RAD (US$/TM)",                type: "input", dec: 2},
     {k: "cab",       label: "Volumen Cabotaje Pluspetrol (TM)", type: "input", dec: 0, zero: true, total: "cab"},
@@ -595,7 +576,7 @@ window.addEventListener("error", function(e){
   ];
   var simCols = document.getElementById("simCols");
   var refVol = avgOf(state.hist.volumen), refPpc = avgOf(state.hist.ppc), refImp = avgOf(state.hist.importado);
-  // Prima Local (Prima CFR PPC) — promedios de referencia calculados al 16/09/2026 sobre la serie diaria
+  // Prima Local (Prima CFR Pluspetrol) — promedios de referencia calculados al 16/09/2026 sobre la serie diaria
   var refPpcMes = 157.34, refPpc3m = 184.49, refPpcAnio = 153.33;
 
   // Buques por mes: proveedor + capacidad. Prima = contrato (Geogas) o histórico ponderado (otros).
@@ -673,13 +654,11 @@ window.addEventListener("error", function(e){
       "<input type='number' id='projVol"+pm.idx+"' value='"+v+"' placeholder='"+Math.round(refVol)+"'></div>" +
       "<div class='field'><label>Volumen cabotaje Pluspetrol proyectado (TM)</label>" +
       "<input type='number' id='projCab"+pm.idx+"' value='"+(state.hist.cab[pm.idx] || "")+"' placeholder='0'></div>" +
-      "<div class='field'><label>Prima Importado (US$/TM)</label>" +
+      "<div class='field'><label>Prima all in Importado (US$/TM)</label>" +
       "<input type='number' id='projImp"+pm.idx+"' value='"+im+"' placeholder='"+refImp.toFixed(1)+"'></div>" +
-      "<div class='field'><label>Prima Local / PPC (US$/TM)</label>" +
+      "<div class='field'><label>Prima Local / Pluspetrol (US$/TM)</label>" +
       "<input type='number' id='projPpc"+pm.idx+"' value='"+p+"' placeholder='"+refPpc.toFixed(1)+"'></div>" +
       "<div class='ref refppc'>Últ. mes: <b>"+refPpcMes.toFixed(1)+"</b> · Últ. 3m: <b>"+refPpc3m.toFixed(1)+"</b> · Últ. año: <b>"+refPpcAnio.toFixed(1)+"</b></div>" +
-      "<div class='field'><label>Tipo de cambio (S/ por US$)</label>" +
-      "<input type='number' step='0.01' id='projTc"+pm.idx+"' value='"+state.hist.tc[pm.idx]+"'></div>" +
       "<div class='field'><label>RAD (US$/TM)</label>" +
       "<input type='number' step='0.01' id='projRad"+pm.idx+"' value='"+state.hist.rad[pm.idx]+"'></div>" +
       "</div>";
@@ -705,7 +684,7 @@ window.addEventListener("error", function(e){
   }
   function renderDlgShips(idx){
     var s = getShips(idx), h = "";
-    if (!s.n) h = "<p class='dlgnote'>Modo manual: ingresa el volumen y la Prima Importado directamente en la columna del mes.</p>";
+    if (!s.n) h = "<p class='dlgnote'>Modo manual: ingresa el volumen y la Prima all in Importado directamente en la columna del mes.</p>";
     for (var k=0;k<s.n;k++){
       var it = s.items[k], at = " data-k='"+k+"'";
       h += "<div class='shipcard'><h4>Buque "+(k+1)+"</h4><div class='shipgrid'>" +
@@ -723,7 +702,7 @@ window.addEventListener("error", function(e){
     }
   }
 
-  // Con buques, Volumen = suma de capacidades y Prima Importado = promedio ponderado (por capacidad) de la prima total de cada buque
+  // Con buques, Volumen = suma de capacidades y Prima all in Importado = promedio ponderado (por capacidad) de la prima total de cada buque
   function updateShips(idx){
     var s = getShips(idx), vol = 0, w = 0, missing = false, calcs = [];
     for (var k=0;k<s.n;k++){
@@ -833,83 +812,25 @@ window.addEventListener("error", function(e){
   });
   simCols.addEventListener("input", function(){ simDirty = true; });   // hay una simulación a medio escribir: no la pisa la actualización compartida
 
-  // ---------- COMPARACIÓN ----------
-  var compBody = document.getElementById("compBody");
-
-  function buildCompRow(row, idx){
-    var tr = document.createElement("tr");
-    tr.innerHTML =
-      "<td><input class='cell pname' data-field='nombre' value='"+row.nombre+"'></td>" +
-      "<td><input class='cell' data-field='fecha' value='"+(row.fecha||"")+"' style='width:88px;text-align:left;font-family:inherit'></td>" +
-      "<td><input class='cell' data-field='tms' value='"+row.tms+"'></td>" +
-      "<td><input class='cell' data-field='plus' value='"+row.plus+"'></td>" +
-      "<td><input class='cell' data-field='buque' value='"+row.buque+"'></td>" +
-      "<td class='calc margen'></td>" +
-      "<td class='calc total'></td>" +
-      "<td><button class='rowbtn' data-del>✕</button></td>";
-    tr.dataset.idx = idx;
-    return tr;
+  // ---------- COMPARACIÓN DE PROVEEDORES (solo lectura, dentro de Proyección; mismo contenido que la hoja del Excel) ----------
+  function compSorted(){
+    return state.comp.slice().sort(function(a, b){ return String(a.fecha || "9999").localeCompare(String(b.fecha || "9999")); });
   }
-
-  function buildCompTable(){
-    compBody.innerHTML = "";
-    state.comp.forEach(function(row, idx){
-      compBody.appendChild(buildCompRow(row, idx));
+  function mesDeFecha(fecha){
+    return fecha ? (MONTHS[parseInt(String(fecha).slice(5, 7), 10) - 1] || String(fecha)) : "Sin fecha";
+  }
+  var compRefBody = document.getElementById("compRefBody");
+  function buildCompRefTable(){
+    var html = "";
+    compSorted().forEach(function(t){
+      var margen = (t.plus || 0) - (t.buque || 0), total = margen * (t.tms || 0);
+      html += "<tr><td style='text-align:left'>" + esc(mesDeFecha(t.fecha)) + "</td><td>" + fmt(t.tms || 0) + "</td><td>" + fmt(t.plus || 0,{dec:2}) +
+        "</td><td>" + fmt(t.buque || 0,{dec:2}) + "</td><td class='" + cls(margen) + "'>" + fmt(margen,{dec:2}) + "</td><td class='" + cls(total) + "'>" + fmt(total) +
+        "</td><td style='text-align:left'>" + esc(t.nombre || "") + "</td></tr>";
     });
+    compRefBody.innerHTML = html;
   }
-
-  function recalcComp(){
-    var rows = compBody.querySelectorAll("tr");
-    var totals = [];
-    rows.forEach(function(tr, idx){
-      var d = state.comp[idx];
-      var margen = (d.plus||0) - (d.buque||0);
-      var total = margen * (d.tms||0);
-      totals.push(total);
-      var mEl = tr.querySelector(".margen");
-      var tEl = tr.querySelector(".total");
-      mEl.textContent = fmt(margen, {dec:1});
-      mEl.className = "calc margen " + cls(margen);
-      tEl.textContent = fmt(total);
-      tEl.className = "calc total " + cls(total);
-      tr.classList.remove("best","worst");
-    });
-    if (totals.length > 1){
-      var maxV = Math.max.apply(null, totals), minV = Math.min.apply(null, totals);
-      rows.forEach(function(tr, idx){
-        if (totals[idx] === maxV && maxV !== minV) tr.classList.add("best");
-        if (totals[idx] === minV && maxV !== minV) tr.classList.add("worst");
-      });
-    }
-  }
-
-  buildCompTable();
-  compBody.addEventListener("input", function(e){
-    if (!e.target.classList.contains("cell")) return;
-    var tr = e.target.closest("tr");
-    var idx = parseInt(tr.dataset.idx,10);
-    var field = e.target.dataset.field;
-    var val = (field === "nombre" || field === "fecha") ? e.target.value : (parseFloat(e.target.value) || 0);
-    state.comp[idx][field] = val;
-    recalcComp();
-    persist();
-  });
-  compBody.addEventListener("click", function(e){
-    if (!e.target.hasAttribute("data-del")) return;
-    var tr = e.target.closest("tr");
-    var idx = parseInt(tr.dataset.idx,10);
-    state.comp.splice(idx,1);
-    buildCompTable();
-    recalcComp();
-    persist();
-  });
-  document.getElementById("addProvRow").addEventListener("click", function(){
-    state.comp.push({nombre:"Nuevo proveedor", tms:0, plus:0, buque:0});
-    buildCompTable();
-    recalcComp();
-    persist();
-  });
-  recalcComp();
+  buildCompRefTable();
 
   // ---------- RAD (referencia) ----------
   var radBody = document.getElementById("radBody");
@@ -955,7 +876,6 @@ window.addEventListener("error", function(e){
       dh.importado[i] = num("projImp", 0);
       dh.ppc[i] = num("projPpc", 0);
       dh.cab[i] = num("projCab", 0);
-      dh.tc[i] = num("projTc", state.hist.tc[i]);
       dh.rad[i] = num("projRad", state.hist.rad[i]);
       dh.margenUS[i] = null;   // el margen pasa a calcularse con lo simulado
     });
@@ -983,18 +903,18 @@ window.addEventListener("error", function(e){
     if (!d || !d.months.length){
       h += "<p class='dlgnote'>No hay datos cargados en Setiembre–Diciembre. Ingresa volumen y primas (o configura buques) y vuelve a simular.</p>";
     } else {
-      var tv = 0, tcab = 0, tm = 0, ts = 0, tdt = 0, tdelta = 0;
+      var tv = 0, tcab = 0, tm = 0, tdt = 0, tdelta = 0;
       h += "<p class='donesub'>Setiembre–Diciembre · todavía no es la proyección vigente · Δ = diferencia del margen importado frente a la vigente</p>";
-      h += "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Volumen (TM)</th><th>Cabotaje Pluspetrol (TM)</th><th>Prima Local</th><th>Prima Importado</th><th>Margen unit.</th><th>Margen importado US$</th><th>Total S/</th><th>DELTA VS 40 total</th><th>Δ vs vigente US$</th></tr></thead><tbody>";
+      h += "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Volumen (TM)</th><th>Cabotaje Pluspetrol (TM)</th><th>Prima Local</th><th>Prima all in Importado</th><th>Margen unit.</th><th>Margen importado US$</th><th>DELTA VS 40 total</th><th>Δ vs vigente US$</th></tr></thead><tbody>";
       d.months.forEach(function(m){
         var c = m.c, delta = c.mUS - histCalc(m.idx, state.hist).mUS;
-        tv += c.vol; tcab += c.cab; tm += c.mUS; ts += c.soles; tdt += c.dt; tdelta += delta;
+        tv += c.vol; tcab += c.cab; tm += c.mUS; tdt += c.dt; tdelta += delta;
         h += "<tr><td>" + m.name + " <span class='dim'>" + (m.n ? m.n + (m.n === 1 ? " buque" : " buques") : "manual") + "</span></td><td>" + fmt(c.vol) + "</td><td>" + fmtz(c.cab) + "</td><td>" + fmt(c.ppc,{dec:2}) + "</td><td>" + fmt(c.imp,{dec:2}) +
-          "</td><td class='" + cls(c.mu) + "'>" + fmt(c.mu,{dec:2}) + "</td><td class='" + cls(c.mUS) + "'>" + fmt(c.mUS) + "</td><td class='" + cls(c.soles) + "'>" + fmt(c.soles) +
+          "</td><td class='" + cls(c.mu) + "'>" + fmt(c.mu,{dec:2}) + "</td><td class='" + cls(c.mUS) + "'>" + fmt(c.mUS) +
           "</td><td class='" + cls(c.dt) + "'>" + fmt(c.dt) + "</td><td class='" + cls(delta) + "'>" + fmtz(delta) + "</td></tr>";
       });
       h += "<tr class='totalrow'><td>Total</td><td>" + fmt(tv) + "</td><td>" + fmtz(tcab) + "</td><td></td><td></td><td class='" + cls(tm) + "'>" + (tv ? fmt(tm / tv,{dec:2}) : "—") +
-        "</td><td class='" + cls(tm) + "'>" + fmt(tm) + "</td><td class='" + cls(ts) + "'>" + fmt(ts) + "</td><td class='" + cls(tdt) + "'>" + fmt(tdt) +
+        "</td><td class='" + cls(tm) + "'>" + fmt(tm) + "</td><td class='" + cls(tdt) + "'>" + fmt(tdt) +
         "</td><td class='" + cls(tdelta) + "'>" + fmtz(tdelta) + "</td></tr></tbody></table></div>";
       if (d.ships.length) h += "<h4>Detalle de buques</h4>" + shipsTableHtml(d.ships);
     }
@@ -1150,7 +1070,7 @@ window.addEventListener("error", function(e){
     var L = "BCDEFGHIJKLM";
     function F(f, v, s){ return {f: f, v: v, s: s}; }
     function blankRow(){ var a = []; for (var j = 0; j < 14; j++) a.push(""); return a; }
-    var labels = {5: "Tipo de cambio", 6: "Volumen (TM)", 7: "Prima PPC (US$/TM)", 8: "Precio Importado (US$/TM)", 9: "Margen unitario US$/TM",
+    var labels = {5: "Tipo de cambio", 6: "Volumen (TM)", 7: "Prima Pluspetrol (US$/TM)", 8: "Prima all in Importado (US$/TM)", 9: "Margen unitario US$/TM",
       10: "Margen importado US$", 11: "Total Soles S/", 12: "Fee Terminal:", 13: "RAD (US$/TM)", 14: "Volumen Cabotaje Pluspetrol (TM)",
       15: "Margen Cabotaje Pluspetrol US$", 16: "DELTA VS 40 local", 17: "DELTA VS 40 total"};
     var R = {};
@@ -1191,11 +1111,11 @@ window.addEventListener("error", function(e){
       ["Margen unitario = Prima Plus − Prima Buque · Total = Margen unitario × TMs"], []);
     rows.push(["Mes", "TMs", "Prima Plus", "Prima Buque", "Margen unitario", "Total US$", "Proveedor"].map(H));   // fila 23
 
-    var comp = state.comp.slice().sort(function(a, b){ return String(a.fecha || "9999").localeCompare(String(b.fecha || "9999")); });
+    var comp = compSorted();
     var first = rows.length + 1;
     comp.forEach(function(t){
       var nr = rows.length + 1, mg = (t.plus || 0) - (t.buque || 0);
-      var mes = t.fecha ? (MONTHS[parseInt(String(t.fecha).slice(5, 7), 10) - 1] || String(t.fecha)) : "Sin fecha";
+      var mes = mesDeFecha(t.fecha);
       rows.push([mes, cell(t.tms || 0, X_INT), cell(r2(t.plus || 0), X_DEC), cell(r2(t.buque || 0), X_DEC),
         F("C" + nr + "-D" + nr, r2(mg), X_DEC), F("E" + nr + "*B" + nr, r2(mg * (t.tms || 0)), X_INT), t.nombre || ""]);
     });
@@ -1287,7 +1207,6 @@ window.addEventListener("error", function(e){
       var set = function(id, v){ document.getElementById(id + i).value = v ? v : ""; };
       if (getShips(i).n === 0){ set("projVol", h.volumen[i]); set("projImp", h.importado[i]); }
       set("projPpc", h.ppc[i]); set("projCab", h.cab[i]);
-      document.getElementById("projTc" + i).value = h.tc[i];
       document.getElementById("projRad" + i).value = h.rad[i];
       updateShips(i);
     });
@@ -1317,22 +1236,22 @@ window.addEventListener("error", function(e){
     return p(d.getDate()) + "/" + p(d.getMonth() + 1) + "/" + d.getFullYear() + " " + p(d.getHours()) + ":" + p(d.getMinutes());
   }
 
-  // Tarjetas resumen de la proyección vigente
+  // Tarjetas resumen de la proyección vigente: total en miles de US$ y margen unitario (US$/TM) de cada tramo
+  function fmtK(n){ return fmt(Math.round(n / 1000)) + " k"; }
   function renderKpis(){
-    var year = {mUS: 0, soles: 0, dt: 0}, sd = 0;
+    var ytd = {mUS: 0, vol: 0}, sd = {mUS: 0, vol: 0};
     for (var i = 0; i < 12; i++){
-      var c = histCalc(i);
-      year.mUS += c.mUS; year.soles += c.soles; year.dt += c.dt;
-      if (i >= 8) sd += c.mUS;
+      var c = histCalc(i), b = (i < 8) ? ytd : sd;
+      b.mUS += c.mUS; b.vol += c.vol;
     }
-    var card = function(label, prefix, v, sub){
-      return "<div class='kpi'><div class='kl'>" + label + "</div><div class='kv " + cls(v) + "'>" + prefix + " " + fmt(v) + "</div><div class='ks'>" + sub + "</div></div>";
+    var card = function(label, v, vol, sub){
+      var u = vol ? v / vol : 0;
+      return "<div class='kpi'><div class='kl'>" + label + "</div><div class='kv " + cls(v) + "'>US$ " + fmtK(v) + "</div>" +
+        "<div class='ku " + cls(u) + "'>" + fmt(u,{dec:2}) + " US$/TM</div><div class='ks'>" + sub + "</div></div>";
     };
     document.getElementById("kpis").innerHTML =
-      card("Margen importado del año", "US$", year.mUS, "Ene–Dic 2026") +
-      card("Margen Set–Dic proyectado", "US$", sd, "Setiembre a Diciembre") +
-      card("Total en soles", "S/", year.soles, "Ene–Dic 2026") +
-      card("DELTA VS 40 total", "US$", year.dt, "Ene–Dic 2026");
+      card("Margen importado YTD Enero–Agosto", ytd.mUS, ytd.vol, "Cerrado") +
+      card("Margen Set–Dic proyectado", sd.mUS, sd.vol, "Setiembre a Diciembre");
   }
 
   // Estado de conexión, fecha de la vigente y detalle de buques
