@@ -235,8 +235,8 @@
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--muted); }
   .dot.on { background: var(--pos); } .dot.off { background: var(--neg); } .dot.wait { background: var(--accent); }
 
-  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 260px)); gap: 14px; margin-bottom: 18px; }
-  @media (max-width: 1180px) { .kpis { grid-template-columns: repeat(2, minmax(0, 260px)); } }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .kpis { grid-template-columns: 1fr; } }
   .kpi { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; box-shadow: var(--shadow); }
   .kpi .kl { font-size: 12px; color: var(--muted); line-height: 1.25; min-height: 2.5em; }
@@ -270,6 +270,7 @@
   <nav class="tabs">
     <button class="tab-btn active" data-tab="proy">Proyección</button>
     <button class="tab-btn" data-tab="sim">Nueva simulación</button>
+    <button class="tab-btn" data-tab="comp">Comparación de proveedores</button>
     <button class="tab-btn" data-tab="rad">RAD (referencia)</button>
     <button class="tab-btn" data-tab="param">Parámetros</button>
   </nav>
@@ -282,16 +283,6 @@
       <h2>Data histórica mensual<span class="legend-lock">🔒 Ene–Ago cerrado</span><span class="legend-proj"><span class="sw"></span>Set–Dic proyectado</span></h2>
       <div class="tablewrap">
         <table class="hist mono" id="histTable"></table>
-      </div>
-    </div>
-    <div class="card">
-      <h2>Comparación de proveedores por transacción</h2>
-      <p class="sub">Margen unitario = Prima Plus − Prima Buque · Total = Margen unitario × TMs. Mismo contenido que la hoja del Excel.</p>
-      <div class="tablewrap">
-        <table class="mono" id="compRefTable">
-          <thead><tr><th style="text-align:left">Mes</th><th>TMs</th><th>Prima Plus</th><th>Prima Buque</th><th>Margen unitario</th><th>Total US$</th><th style="text-align:left">Proveedor</th></tr></thead>
-          <tbody id="compRefBody"></tbody>
-        </table>
       </div>
     </div>
     <details class="card vigdet">
@@ -307,6 +298,20 @@
       <h2>Nueva simulación Set–Dic</h2>
       <div class="simcols" id="simCols"></div>
       <button class="addbtn" id="btnSimular" style="border-style:solid;border-color:var(--accent);color:var(--accent-ink);font-weight:600;">Simular →</button>
+    </div>
+  </section>
+
+  <!-- COMPARACIÓN DE PROVEEDORES -->
+  <section class="panel" id="panel-comp">
+    <div class="card">
+      <h2>Comparación de proveedores por transacción</h2>
+      <p class="sub">Margen unitario = Prima Plus − Prima Buque · Total = Margen unitario × TMs. Mismo contenido que la hoja del Excel.</p>
+      <div class="tablewrap">
+        <table class="mono" id="compRefTable">
+          <thead><tr><th style="text-align:left">Mes</th><th>TMs</th><th>Prima Plus</th><th>Prima Buque</th><th>Margen unitario</th><th>Total US$</th><th style="text-align:left">Proveedor</th></tr></thead>
+          <tbody id="compRefBody"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 

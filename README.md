@@ -23,26 +23,29 @@ Pestañas:
    despacho terminal en miles de US$; las primas, el margen unitario y el RAD
    se quedan en US$/TM, sin escalar — sin tipo de cambio, soles, ni las filas
    de volumen/margen de cabotaje Pluspetrol ni DELTA VS 40, aunque el
-   cabotaje y el DELTA VS 40 se siguen calculando internamente), la tabla de
-   comparación de proveedores por transacción (solo lectura, en unidades
-   reales, no en miles) y el detalle de buques. Incluye **Descargar Excel**
-   (esa hoja siempre queda en unidades reales, con tipo de cambio y soles,
-   igual que la planilla original). Se actualiza sola cada minuto.
+   cabotaje y el DELTA VS 40 se siguen calculando internamente) y el detalle
+   de buques. Incluye **Descargar Excel** (esa hoja siempre queda en unidades
+   reales, con tipo de cambio y soles, igual que la planilla original).
+   Se actualiza sola cada minuto.
 2. **Nueva simulación** — por mes (Set–Dic): buques (proveedor, capacidad,
    demurrage, procura, otros), volumen, despacho terminal, primas y RAD.
    El cabotaje Pluspetrol ya no se proyecta aquí — queda fijo en el último
    valor guardado, pero sigue sumando en DELTA VS 40.
    **Simular** muestra el resultado comparado contra la vigente; solo
    **Guardar como vigente** (con confirmación) la reemplaza para todos.
-3. **RAD** — tabla de referencia 2024–2026 (solo lectura).
-4. **Parámetros** — prima base de Geogas (contrato) y prima base sugerida de
+3. **Comparación de proveedores** — tabla de transacciones por proveedor,
+   solo lectura, en unidades reales (no en miles); mismo contenido que la
+   hoja del Excel.
+4. **RAD** — tabla de referencia 2024–2026 (solo lectura).
+5. **Parámetros** — prima base de Geogas (contrato) y prima base sugerida de
    Trafigura (US$/TM); se guardan solas y se comparten.
 
 La tabla de comparación de proveedores (transacciones que alimentan la prima
 histórica de cada proveedor) ya no es editable desde la página; sus datos son
 los de `defaultState.comp` en `index.html` y, si se editaron antes desde la
-pestaña que existía, cada navegador solo guardaba su propia copia (nunca se
-compartió por Supabase). Para actualizarla hay que editar `index.html`.
+pestaña editable que existía originalmente, cada navegador solo guardaba su
+propia copia (nunca se compartió por Supabase). Para actualizarla hay que
+editar `index.html`.
 
 ## Configuración de Supabase (una sola vez)
 
