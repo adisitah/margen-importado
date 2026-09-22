@@ -43,7 +43,7 @@ publicación son públicos, esos datos son públicos.
 - `Margen unitario = Prima PPC − Precio Importado`
 - `Margen importado US$ = Margen unitario × Volumen` (Ene–Ago: valor fijo de la planilla)
 - `Total Soles = Margen importado US$ × TC del mes`
-- `Margen Cabotaje = RAD × Volumen Cabotaje Plus`
+- `Margen Cabotaje Pluspetrol = RAD × Volumen Cabotaje Pluspetrol`
 - `DELTA VS 40 local = (RAD − 40) × Cabotaje`
 - `DELTA VS 40 total = (RAD − 40) × (Volumen + Cabotaje)`
 - Prima de un buque = prima base + demurrage + procura + otros gastos. La prima

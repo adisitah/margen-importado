@@ -527,8 +527,8 @@ window.addEventListener("error", function(e){
     {k: "soles",     label: "Total Soles S/",              type: "calc",  dec: 0, total: "soles"},
     {k: "fee",       label: "Fee Terminal:",               type: "section"},
     {k: "rad",       label: "RAD (US$/TM)",                type: "input", dec: 2},
-    {k: "cab",       label: "Volumen Cabotaje Plus (TM)",  type: "input", dec: 0, zero: true, total: "cab"},
-    {k: "mc",        label: "Margen Cabotaje US$",         type: "calc",  dec: 0},
+    {k: "cab",       label: "Volumen Cabotaje Pluspetrol (TM)", type: "input", dec: 0, zero: true, total: "cab"},
+    {k: "mc",        label: "Margen Cabotaje Pluspetrol US$",   type: "calc",  dec: 0},
     {k: "dl",        label: "DELTA VS 40 local",           type: "calc",  dec: 0},
     {k: "dt",        label: "DELTA VS 40 total",           type: "calc",  dec: 0, total: "dt"}
   ];
@@ -671,7 +671,7 @@ window.addEventListener("error", function(e){
       "<div class='ref shipsum' id='shipSum"+pm.idx+"'>Manual</div>" +
       "<div class='field'><label>Volumen proyectado (TM)</label>" +
       "<input type='number' id='projVol"+pm.idx+"' value='"+v+"' placeholder='"+Math.round(refVol)+"'></div>" +
-      "<div class='field'><label>Volumen cabotaje proyectado (TM)</label>" +
+      "<div class='field'><label>Volumen cabotaje Pluspetrol proyectado (TM)</label>" +
       "<input type='number' id='projCab"+pm.idx+"' value='"+(state.hist.cab[pm.idx] || "")+"' placeholder='0'></div>" +
       "<div class='field'><label>Prima Importado (US$/TM)</label>" +
       "<input type='number' id='projImp"+pm.idx+"' value='"+im+"' placeholder='"+refImp.toFixed(1)+"'></div>" +
@@ -985,7 +985,7 @@ window.addEventListener("error", function(e){
     } else {
       var tv = 0, tcab = 0, tm = 0, ts = 0, tdt = 0, tdelta = 0;
       h += "<p class='donesub'>Setiembre–Diciembre · todavía no es la proyección vigente · Δ = diferencia del margen importado frente a la vigente</p>";
-      h += "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Volumen (TM)</th><th>Cabotaje (TM)</th><th>Prima Local</th><th>Prima Importado</th><th>Margen unit.</th><th>Margen importado US$</th><th>Total S/</th><th>DELTA VS 40 total</th><th>Δ vs vigente US$</th></tr></thead><tbody>";
+      h += "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Volumen (TM)</th><th>Cabotaje Pluspetrol (TM)</th><th>Prima Local</th><th>Prima Importado</th><th>Margen unit.</th><th>Margen importado US$</th><th>Total S/</th><th>DELTA VS 40 total</th><th>Δ vs vigente US$</th></tr></thead><tbody>";
       d.months.forEach(function(m){
         var c = m.c, delta = c.mUS - histCalc(m.idx, state.hist).mUS;
         tv += c.vol; tcab += c.cab; tm += c.mUS; ts += c.soles; tdt += c.dt; tdelta += delta;
@@ -1151,8 +1151,8 @@ window.addEventListener("error", function(e){
     function F(f, v, s){ return {f: f, v: v, s: s}; }
     function blankRow(){ var a = []; for (var j = 0; j < 14; j++) a.push(""); return a; }
     var labels = {5: "Tipo de cambio", 6: "Volumen (TM)", 7: "Prima PPC (US$/TM)", 8: "Precio Importado (US$/TM)", 9: "Margen unitario US$/TM",
-      10: "Margen importado US$", 11: "Total Soles S/", 12: "Fee Terminal:", 13: "RAD (US$/TM)", 14: "Volumen Cabotaje Plus (TM)",
-      15: "Margen Cabotaje  US$", 16: "DELTA VS 40 local", 17: "DELTA VS 40 total"};
+      10: "Margen importado US$", 11: "Total Soles S/", 12: "Fee Terminal:", 13: "RAD (US$/TM)", 14: "Volumen Cabotaje Pluspetrol (TM)",
+      15: "Margen Cabotaje Pluspetrol US$", 16: "DELTA VS 40 local", 17: "DELTA VS 40 total"};
     var R = {};
     for (var n = 5; n <= 17; n++){ R[n] = blankRow(); R[n][0] = (n === 12) ? cell(labels[n], X_TXT) : labels[n]; }
 
