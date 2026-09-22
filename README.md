@@ -61,7 +61,9 @@ publicación son públicos, esos datos son públicos.
 ## Fórmulas (de la planilla)
 
 - `Margen unitario = Prima Pluspetrol − Prima all in Importado`
-- `Margen del importado US$ = Margen unitario × Volumen` (Ene–Ago: valor fijo de la planilla)
+- `Margen del importado US$ = Margen unitario × Volumen Importado consumido` (Ene–Ago: valor
+  fijo de la planilla). "Volumen Importado consumido" es una fila nueva, por ahora siempre
+  igual al Volumen importado (no tiene su propio dato ni input todavía).
 - `Total Soles = Margen del importado US$ × TC del mes`
 - `Margen Cabotaje Pluspetrol = RAD × Volumen Cabotaje Pluspetrol`
 - `Margen Despacho Terminal = RAD × Despacho Terminal` (fuente Ene–Ago: `Despacho terminal.xlsx`; Set–Dic se completa con la simulación, igual que Cabotaje)

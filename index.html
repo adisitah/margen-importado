@@ -398,7 +398,7 @@ window.addEventListener("error", function(e){
     hist: {
       tc:        [3.42,3.42,3.42,3.42,3.42,3.40,3.39,3.37,3.37,3.40,3.37,3.37],
       volumen:   [22800,15300,38150,39781,38615,38090,41163,41000,41000,33000,38000,39000],
-      ppc:       [0,0,0,0,0,0,199,220,200,170,170,170],
+      ppc:       [135,139,100,160,177,226,199,220,200,170,170,170],
       importado: [0,0,0,0,0,0,274,266,252,150,170,177],
       margenUS:  [-66031,-22197,-768260,558703,1817122,400955,-3104513,-1975173,-2132040,938724,0,-258783],
       rad:       [40,39,43,27,26,31,69,96,55,39,39,39],
@@ -501,10 +501,11 @@ window.addEventListener("error", function(e){
   function histCalc(i, h){
     h = h || state.hist;
     var vol = h.volumen[i] || 0, ppc = h.ppc[i] || 0, imp = h.importado[i] || 0, tc = h.tc[i] || 0, rad = h.rad[i] || 0, cab = h.cab[i] || 0, desp = (h.desp && h.desp[i]) || 0;
+    var consumido = vol;                                                                     // Volumen Importado consumido (por ahora, igual al Volumen importado)
     var mu = (ppc === 0 && imp === 0) ? 0 : ppc - imp;                                       // Margen unitario
     var fixedM = h.margenUS[i];
-    var mUS = (fixedM !== null && fixedM !== undefined) ? fixedM : mu * vol;                  // Margen del importado US$ (fijo en la planilla o calculado)
-    return {vol: vol, ppc: ppc, imp: imp, tc: tc, rad: rad, cab: cab, desp: desp, mu: mu, mUS: mUS, soles: mUS * tc,
+    var mUS = (fixedM !== null && fixedM !== undefined) ? fixedM : mu * consumido;            // Margen del importado US$ (fijo en la planilla o calculado sobre el volumen consumido)
+    return {vol: vol, consumido: consumido, ppc: ppc, imp: imp, tc: tc, rad: rad, cab: cab, desp: desp, mu: mu, mUS: mUS, soles: mUS * tc,
       mc: rad * cab, mDesp: rad * desp, dl: (rad - 40) * cab, dt: (rad - 40) * (vol + cab)};
 }
 
@@ -513,6 +514,7 @@ window.addEventListener("error", function(e){
   var HROWS = [
     {k: "margimp",   label: "Margen del Importado",        type: "section"},
     {k: "volumen",   label: "Volumen importado (miles TM)", type: "input", dec: 1, total: "vol", scale: 1000},
+    {k: "consumido", label: "Volumen Importado consumido (miles TM)", type: "calc", dec: 1, total: "consumido", scale: 1000},
     {k: "ppc",       label: "Prima Pluspetrol (US$/TM)",   type: "input", dec: 1, zero: true},
     {k: "importado", label: "Prima all in Importado (US$/TM)", type: "input", dec: 1, zero: true},
     {k: "mu",        label: "Margen unitario (US$/TM)",    type: "calc",  dec: 2},
@@ -549,10 +551,10 @@ window.addEventListener("error", function(e){
   }
 
   function recalcHist(){
-    var sums = {vol: 0, mUS: 0, soles: 0, cab: 0, desp: 0, dt: 0};
+    var sums = {vol: 0, consumido: 0, mUS: 0, soles: 0, cab: 0, desp: 0, dt: 0};
     for (var i=0;i<12;i++){
       var c = histCalc(i), pc = i >= 8 ? " projcell" : "";
-      sums.vol += c.vol; sums.mUS += c.mUS; sums.soles += c.soles; sums.cab += c.cab; sums.desp += c.desp; sums.dt += c.dt;
+      sums.vol += c.vol; sums.consumido += c.consumido; sums.mUS += c.mUS; sums.soles += c.soles; sums.cab += c.cab; sums.desp += c.desp; sums.dt += c.dt;
       HROWS.forEach(function(r){
         if (r.type !== "calc") return;
         var el = document.getElementById("h_" + r.k + "_" + i);
