@@ -235,7 +235,8 @@
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--muted); }
   .dot.on { background: var(--pos); } .dot.off { background: var(--neg); } .dot.wait { background: var(--accent); }
 
-  .kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 260px)); gap: 14px; margin-bottom: 18px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 260px)); gap: 14px; margin-bottom: 18px; }
+  @media (max-width: 1180px) { .kpis { grid-template-columns: repeat(2, minmax(0, 260px)); } }
   @media (max-width: 560px) { .kpis { grid-template-columns: 1fr; } }
   .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; box-shadow: var(--shadow); }
   .kpi .kl { font-size: 12px; color: var(--muted); }
@@ -513,8 +514,6 @@ window.addEventListener("error", function(e){
     {k: "mUS",       label: "Margen del importado (miles US$)", type: "calc",  dec: 0, total: "mUS", scale: 1000},
     {k: "fee",       label: "Margen del Terminal",         type: "section"},
     {k: "rad",       label: "RAD (US$/TM)",                type: "input", dec: 0},
-    {k: "cab",       label: "Volumen Cabotaje Pluspetrol (miles TM)", type: "input", dec: 1, zero: true, total: "cab", scale: 1000},
-    {k: "mc",        label: "Margen Cabotaje Pluspetrol (miles US$)", type: "calc",  dec: 0, scale: 1000},
     {k: "desp",      label: "Despacho Terminal (miles TM)", type: "input", dec: 1, zero: true, total: "desp", scale: 1000},
     {k: "mDesp",     label: "Margen Despacho Terminal (miles US$)", type: "calc",  dec: 0, scale: 1000},
     {k: "dl",        label: "DELTA VS 40 local (miles US$)", type: "calc",  dec: 0, scale: 1000},
@@ -659,8 +658,6 @@ window.addEventListener("error", function(e){
       "<div class='ref shipsum' id='shipSum"+pm.idx+"'>Manual</div>" +
       "<div class='field'><label>Volumen proyectado (TM)</label>" +
       "<input type='number' id='projVol"+pm.idx+"' value='"+v+"' placeholder='"+Math.round(refVol)+"'></div>" +
-      "<div class='field'><label>Volumen cabotaje Pluspetrol proyectado (TM)</label>" +
-      "<input type='number' id='projCab"+pm.idx+"' value='"+(state.hist.cab[pm.idx] || "")+"' placeholder='0'></div>" +
       "<div class='field'><label>Despacho Terminal proyectado (TM)</label>" +
       "<input type='number' id='projDesp"+pm.idx+"' value='"+((state.hist.desp && state.hist.desp[pm.idx]) || "")+"' placeholder='0'></div>" +
       "<div class='field'><label>Prima all in Importado (US$/TM)</label>" +
@@ -884,8 +881,7 @@ window.addEventListener("error", function(e){
       dh.volumen[i] = num("projVol", 0);
       dh.importado[i] = num("projImp", 0);
       dh.ppc[i] = num("projPpc", 0);
-      dh.cab[i] = num("projCab", 0);
-      dh.desp[i] = num("projDesp", 0);
+      dh.desp[i] = num("projDesp", 0);   // cabotaje (dh.cab) ya no se proyecta desde aquí; queda como estaba (usado por DELTA VS 40)
       dh.rad[i] = num("projRad", state.hist.rad[i]);
       dh.margenUS[i] = null;   // el margen pasa a calcularse con lo simulado
     });
@@ -1216,7 +1212,7 @@ window.addEventListener("error", function(e){
       var i = pm.idx, h = state.hist;
       var set = function(id, v){ document.getElementById(id + i).value = v ? v : ""; };
       if (getShips(i).n === 0){ set("projVol", h.volumen[i]); set("projImp", h.importado[i]); }
-      set("projPpc", h.ppc[i]); set("projCab", h.cab[i]); set("projDesp", h.desp[i]);
+      set("projPpc", h.ppc[i]); set("projDesp", h.desp[i]);
       document.getElementById("projRad" + i).value = h.rad[i];
       updateShips(i);
     });
@@ -1249,10 +1245,10 @@ window.addEventListener("error", function(e){
   // Tarjetas resumen de la proyección vigente: total en miles de US$ y margen unitario (US$/TM) de cada tramo
   function fmtK(n){ return fmt(Math.round(n / 1000)) + " k"; }
   function renderKpis(){
-    var ytd = {mUS: 0, vol: 0}, sd = {mUS: 0, vol: 0};
+    var ytd = {mUS: 0, vol: 0, mDesp: 0, desp: 0}, sd = {mUS: 0, vol: 0, mDesp: 0, desp: 0};
     for (var i = 0; i < 12; i++){
       var c = histCalc(i), b = (i < 8) ? ytd : sd;
-      b.mUS += c.mUS; b.vol += c.vol;
+      b.mUS += c.mUS; b.vol += c.vol; b.mDesp += c.mDesp; b.desp += c.desp;
     }
     var card = function(label, v, vol, sub){
       var u = vol ? v / vol : 0;
@@ -1261,7 +1257,9 @@ window.addEventListener("error", function(e){
     };
     document.getElementById("kpis").innerHTML =
       card("Margen importado YTD Enero–Agosto", ytd.mUS, ytd.vol, "Cerrado") +
-      card("Margen Ene–Dic proyectado", ytd.mUS + sd.mUS, ytd.vol + sd.vol, "Cerrado + Setiembre a Diciembre proyectado");
+      card("Margen Ene–Dic proyectado", ytd.mUS + sd.mUS, ytd.vol + sd.vol, "Cerrado + Setiembre a Diciembre proyectado") +
+      card("Margen YTD Terminal", ytd.mDesp, ytd.desp, "Cerrado") +
+      card("Margen Terminal Ene–Dic proyectado", ytd.mDesp + sd.mDesp, ytd.desp + sd.desp, "Cerrado + Setiembre a Diciembre proyectado");
   }
 
   // Estado de conexión, fecha de la vigente y detalle de buques
