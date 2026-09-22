@@ -360,6 +360,7 @@ window.addEventListener("error", function(e){
 <script>
 (function(){
   var MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Setiembre","Octubre","Noviembre","Diciembre"];
+  var MONTHS_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Set","Oct","Nov","Dic"];
 
   var STORAGE_KEY = "solgas_calc_margen_v2", LEGACY_KEY = "solgas_calc_margen_v1";
 
@@ -502,7 +503,7 @@ window.addEventListener("error", function(e){
   // Filas: input = editable en Set–Dic (cerrado en Ene–Ago) · calc = se recalcula · total = suma en la última columna
   var HROWS = [
     {k: "margimp",   label: "Margen del Importado",        type: "section"},
-    {k: "volumen",   label: "Volumen (TM)",                type: "input", dec: 0, total: "vol"},
+    {k: "volumen",   label: "Volumen importado (TM)",      type: "input", dec: 0, total: "vol"},
     {k: "ppc",       label: "Prima Pluspetrol (US$/TM)",   type: "input", dec: 2, zero: true},
     {k: "importado", label: "Prima all in Importado (US$/TM)", type: "input", dec: 2, zero: true},
     {k: "mu",        label: "Margen unitario (US$/TM)",    type: "calc",  dec: 2},
@@ -517,7 +518,7 @@ window.addEventListener("error", function(e){
 
   function buildHistTable(){
     var html = "<thead><tr><th>Variable</th>";
-    MONTHS.forEach(function(m,i){ html += "<th" + (i>=8?" class='projcell'":"") + ">" + m + "</th>"; });
+    MONTHS_SHORT.forEach(function(m,i){ html += "<th" + (i>=8?" class='projcell'":"") + ">" + m + "</th>"; });
     html += "<th>Total</th></tr></thead><tbody>";
     HROWS.forEach(function(r){
       if (r.type === "section"){
