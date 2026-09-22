@@ -501,19 +501,20 @@ window.addEventListener("error", function(e){
 }
 
   // Filas: input = editable en Set–Dic (cerrado en Ene–Ago) · calc = se recalcula · total = suma en la última columna
+  // scale: 1000 muestra la fila en miles (TM o US$); las primas y tasas por TM se quedan en su unidad natural.
   var HROWS = [
     {k: "margimp",   label: "Margen del Importado",        type: "section"},
-    {k: "volumen",   label: "Volumen importado (TM)",      type: "input", dec: 0, total: "vol"},
+    {k: "volumen",   label: "Volumen importado (miles TM)", type: "input", dec: 1, total: "vol", scale: 1000},
     {k: "ppc",       label: "Prima Pluspetrol (US$/TM)",   type: "input", dec: 2, zero: true},
     {k: "importado", label: "Prima all in Importado (US$/TM)", type: "input", dec: 2, zero: true},
     {k: "mu",        label: "Margen unitario (US$/TM)",    type: "calc",  dec: 2},
-    {k: "mUS",       label: "Margen del importado US$",    type: "calc",  dec: 0, total: "mUS"},
+    {k: "mUS",       label: "Margen del importado (miles US$)", type: "calc",  dec: 0, total: "mUS", scale: 1000},
     {k: "fee",       label: "Margen del Terminal",         type: "section"},
     {k: "rad",       label: "RAD (US$/TM)",                type: "input", dec: 2},
-    {k: "cab",       label: "Volumen Cabotaje Pluspetrol (TM)", type: "input", dec: 0, zero: true, total: "cab"},
-    {k: "mc",        label: "Margen Cabotaje Pluspetrol US$",   type: "calc",  dec: 0},
-    {k: "dl",        label: "DELTA VS 40 local",           type: "calc",  dec: 0},
-    {k: "dt",        label: "DELTA VS 40 total",           type: "calc",  dec: 0, total: "dt"}
+    {k: "cab",       label: "Volumen Cabotaje Pluspetrol (miles TM)", type: "input", dec: 1, zero: true, total: "cab", scale: 1000},
+    {k: "mc",        label: "Margen Cabotaje Pluspetrol (miles US$)", type: "calc",  dec: 0, scale: 1000},
+    {k: "dl",        label: "DELTA VS 40 local (miles US$)", type: "calc",  dec: 0, scale: 1000},
+    {k: "dt",        label: "DELTA VS 40 total (miles US$)", type: "calc",  dec: 0, total: "dt", scale: 1000}
   ];
 
   function buildHistTable(){
@@ -529,7 +530,7 @@ window.addEventListener("error", function(e){
       for (var i=0;i<12;i++){
         var pc = i >= 8 ? " projcell" : "";
         if (r.type === "input"){   // solo lectura: Ene–Ago de la planilla, Set–Dic de la última simulación
-          var v = state.hist[r.k][i];
+          var v = state.hist[r.k][i] / (r.scale || 1);
           html += "<td class='" + (i < 8 ? "locked" : "projcell") + "'>" + (r.zero ? fmtz(v, r.dec) : fmt(v, {dec: r.dec})) + "</td>";
         } else {
           html += "<td class='calc" + pc + "' id='h_" + r.k + "_" + i + "'></td>";
@@ -549,14 +550,14 @@ window.addEventListener("error", function(e){
       HROWS.forEach(function(r){
         if (r.type !== "calc") return;
         var el = document.getElementById("h_" + r.k + "_" + i);
-        el.textContent = fmtz(c[r.k], r.dec);
+        el.textContent = fmtz(c[r.k] / (r.scale || 1), r.dec);
         el.className = "calc " + cls(c[r.k]) + pc;
       });
     }
     HROWS.forEach(function(r){
       if (!r.total) return;
       var el = document.getElementById("hTot_" + r.total);
-      el.textContent = fmtz(sums[r.total], 0);
+      el.textContent = fmtz(sums[r.total] / (r.scale || 1), r.dec);
       el.className = "calc " + cls(sums[r.total]);
     });
   }
@@ -907,17 +908,17 @@ window.addEventListener("error", function(e){
     } else {
       var tv = 0, tcab = 0, tm = 0, tdt = 0, tdelta = 0;
       h += "<p class='donesub'>Setiembre–Diciembre · todavía no es la proyección vigente · Δ = diferencia del margen importado frente a la vigente</p>";
-      h += "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Volumen (TM)</th><th>Cabotaje Pluspetrol (TM)</th><th>Prima Local</th><th>Prima all in Importado</th><th>Margen unit.</th><th>Margen del importado US$</th><th>DELTA VS 40 total</th><th>Δ vs vigente US$</th></tr></thead><tbody>";
+      h += "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Volumen (miles TM)</th><th>Cabotaje Pluspetrol (miles TM)</th><th>Prima Local</th><th>Prima all in Importado</th><th>Margen unit.</th><th>Margen del importado (miles US$)</th><th>DELTA VS 40 total (miles US$)</th><th>Δ vs vigente (miles US$)</th></tr></thead><tbody>";
       d.months.forEach(function(m){
         var c = m.c, delta = c.mUS - histCalc(m.idx, state.hist).mUS;
         tv += c.vol; tcab += c.cab; tm += c.mUS; tdt += c.dt; tdelta += delta;
-        h += "<tr><td>" + m.name + " <span class='dim'>" + (m.n ? m.n + (m.n === 1 ? " buque" : " buques") : "manual") + "</span></td><td>" + fmt(c.vol) + "</td><td>" + fmtz(c.cab) + "</td><td>" + fmt(c.ppc,{dec:2}) + "</td><td>" + fmt(c.imp,{dec:2}) +
-          "</td><td class='" + cls(c.mu) + "'>" + fmt(c.mu,{dec:2}) + "</td><td class='" + cls(c.mUS) + "'>" + fmt(c.mUS) +
-          "</td><td class='" + cls(c.dt) + "'>" + fmt(c.dt) + "</td><td class='" + cls(delta) + "'>" + fmtz(delta) + "</td></tr>";
+        h += "<tr><td>" + m.name + " <span class='dim'>" + (m.n ? m.n + (m.n === 1 ? " buque" : " buques") : "manual") + "</span></td><td>" + fmt(c.vol/1000,{dec:1}) + "</td><td>" + fmtz(c.cab/1000,1) + "</td><td>" + fmt(c.ppc,{dec:2}) + "</td><td>" + fmt(c.imp,{dec:2}) +
+          "</td><td class='" + cls(c.mu) + "'>" + fmt(c.mu,{dec:2}) + "</td><td class='" + cls(c.mUS) + "'>" + fmt(c.mUS/1000) +
+          "</td><td class='" + cls(c.dt) + "'>" + fmt(c.dt/1000) + "</td><td class='" + cls(delta) + "'>" + fmtz(delta/1000,0) + "</td></tr>";
       });
-      h += "<tr class='totalrow'><td>Total</td><td>" + fmt(tv) + "</td><td>" + fmtz(tcab) + "</td><td></td><td></td><td class='" + cls(tm) + "'>" + (tv ? fmt(tm / tv,{dec:2}) : "—") +
-        "</td><td class='" + cls(tm) + "'>" + fmt(tm) + "</td><td class='" + cls(tdt) + "'>" + fmt(tdt) +
-        "</td><td class='" + cls(tdelta) + "'>" + fmtz(tdelta) + "</td></tr></tbody></table></div>";
+      h += "<tr class='totalrow'><td>Total</td><td>" + fmt(tv/1000,{dec:1}) + "</td><td>" + fmtz(tcab/1000,1) + "</td><td></td><td></td><td class='" + cls(tm) + "'>" + (tv ? fmt(tm / tv,{dec:2}) : "—") +
+        "</td><td class='" + cls(tm) + "'>" + fmt(tm/1000) + "</td><td class='" + cls(tdt) + "'>" + fmt(tdt/1000) +
+        "</td><td class='" + cls(tdelta) + "'>" + fmtz(tdelta/1000,0) + "</td></tr></tbody></table></div>";
       if (d.ships.length) h += "<h4>Detalle de buques</h4>" + shipsTableHtml(d.ships);
     }
     var when = fmtDate(state.vigente.savedAt), foot;

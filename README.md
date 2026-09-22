@@ -16,13 +16,14 @@ Pestañas:
 1. **Proyección** (la que ve el gerente) — estado de la proyección vigente
    (fecha de guardado y conexión), 2 tarjetas resumen (Margen importado YTD
    Enero–Agosto y Margen Set–Dic proyectado, cada una con el total en miles de
-   US$ y el margen unitario US$/TM), la tabla mensual solo en USD (volumen,
-   primas, margen unitario, margen importado, RAD, cabotaje Pluspetrol,
-   DELTA VS 40 — sin tipo de cambio ni soles), la tabla de comparación de
-   proveedores por transacción (solo lectura, mismo contenido que el Excel) y
-   el detalle de buques. Incluye **Descargar Excel** (esa hoja sí conserva el
-   tipo de cambio y el total en soles, igual que la planilla original).
-   Se actualiza sola cada minuto.
+   US$ y el margen unitario US$/TM), la tabla mensual solo en USD y en miles
+   (volumen y cabotaje en miles de TM; margen importado, margen cabotaje y
+   DELTA VS 40 en miles de US$; las primas, el margen unitario y el RAD se
+   quedan en US$/TM, sin escalar — sin tipo de cambio ni soles), la tabla de
+   comparación de proveedores por transacción (solo lectura, en unidades
+   reales, no en miles) y el detalle de buques. Incluye **Descargar Excel**
+   (esa hoja siempre queda en unidades reales, con tipo de cambio y soles,
+   igual que la planilla original). Se actualiza sola cada minuto.
 2. **Nueva simulación** — por mes (Set–Dic): buques (proveedor, capacidad,
    demurrage, procura, otros), volumen, cabotaje Pluspetrol, primas y RAD.
    **Simular** muestra el resultado comparado contra la vigente; solo
