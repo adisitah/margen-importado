@@ -400,7 +400,8 @@ window.addEventListener("error", function(e){
       volumen:   [22800,15300,38150,39781,38615,38090,41163,41000,41000,33000,38000,39000],
       ppc:       [135.25,139.38,100.21,160.15,176.69,226.42,205.21,164.54,200,170,170,170],
       importado: [130.94,131.30,128.39,140.86,161.25,207.38,249.96,207.95,252,150,170,177],
-      margenUS:  [-66031,-22197,-768260,558703,1817122,400955,-3104513,-1975173,-2132040,938724,0,-258783],
+      // Ene–Ago: null = se calcula como Margen unitario × Volumen (con las primas actualizadas), ya no el valor cerrado de la planilla original.
+      margenUS:  [null,null,null,null,null,null,null,null,-2132040,938724,0,-258783],
       rad:       [40,39,43,27,26,31,69,96,55,39,39,39],
       cab:       [0,20575,0,6509,15405,6300,8500,5002,13000,13000,13000,13000],
       // Fuente: Despacho terminal.xlsx. Ene–Ago cerrado; Set–Dic se completa con la simulación (igual que Cabotaje).
