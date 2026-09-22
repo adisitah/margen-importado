@@ -396,7 +396,9 @@ window.addEventListener("error", function(e){
       importado: [0,0,0,0,0,0,274,266,252,150,170,177],
       margenUS:  [-66031,-22197,-768260,558703,1817122,400955,-3104513,-1975173,-2132040,938724,0,-258783],
       rad:       [40,39,43,27,26,31,69,96,55,39,39,39],
-      cab:       [0,20575,0,6509,15405,6300,8500,5002,13000,13000,13000,13000]
+      cab:       [0,20575,0,6509,15405,6300,8500,5002,13000,13000,13000,13000],
+      // Fuente: Despacho terminal.xlsx. Ene–Ago cerrado; Set–Dic se completa con la simulación (igual que Cabotaje).
+      desp:      [48600,37360,41175,46770,53383,49504,51259,55773,0,0,0,0]
     },
     comp: [
       {nombre:"BW",             fecha:"2026-01-09", tms:5003,     plus:132.75, buque:116.8},
@@ -461,7 +463,7 @@ window.addEventListener("error", function(e){
         var h = saved.hist, d = st.hist;
         d.tc = numArr(h.tc, d.tc); d.volumen = numArr(h.volumen, d.volumen); d.ppc = numArr(h.ppc, d.ppc);
         d.importado = numArr(h.importado, d.importado); d.margenUS = numArr(h.margenUS, d.margenUS, true);
-        d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab);
+        d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab); d.desp = numArr(h.desp, d.desp);
       }
       if (Array.isArray(saved.comp)) st.comp = saved.comp.filter(function(d){ return d && typeof d === "object"; });
       if (Array.isArray(saved.rad)) st.rad = saved.rad;
@@ -492,12 +494,12 @@ window.addEventListener("error", function(e){
   // Cálculos de un mes con las fórmulas de la planilla
   function histCalc(i, h){
     h = h || state.hist;
-    var vol = h.volumen[i] || 0, ppc = h.ppc[i] || 0, imp = h.importado[i] || 0, tc = h.tc[i] || 0, rad = h.rad[i] || 0, cab = h.cab[i] || 0;
+    var vol = h.volumen[i] || 0, ppc = h.ppc[i] || 0, imp = h.importado[i] || 0, tc = h.tc[i] || 0, rad = h.rad[i] || 0, cab = h.cab[i] || 0, desp = (h.desp && h.desp[i]) || 0;
     var mu = (ppc === 0 && imp === 0) ? 0 : ppc - imp;                                       // Margen unitario
     var fixedM = h.margenUS[i];
     var mUS = (fixedM !== null && fixedM !== undefined) ? fixedM : mu * vol;                  // Margen del importado US$ (fijo en la planilla o calculado)
-    return {vol: vol, ppc: ppc, imp: imp, tc: tc, rad: rad, cab: cab, mu: mu, mUS: mUS, soles: mUS * tc,
-      mc: rad * cab, dl: (rad - 40) * cab, dt: (rad - 40) * (vol + cab)};
+    return {vol: vol, ppc: ppc, imp: imp, tc: tc, rad: rad, cab: cab, desp: desp, mu: mu, mUS: mUS, soles: mUS * tc,
+      mc: rad * cab, mDesp: rad * desp, dl: (rad - 40) * cab, dt: (rad - 40) * (vol + cab)};
 }
 
   // Filas: input = editable en Set–Dic (cerrado en Ene–Ago) · calc = se recalcula · total = suma en la última columna
@@ -513,6 +515,8 @@ window.addEventListener("error", function(e){
     {k: "rad",       label: "RAD (US$/TM)",                type: "input", dec: 0},
     {k: "cab",       label: "Volumen Cabotaje Pluspetrol (miles TM)", type: "input", dec: 1, zero: true, total: "cab", scale: 1000},
     {k: "mc",        label: "Margen Cabotaje Pluspetrol (miles US$)", type: "calc",  dec: 0, scale: 1000},
+    {k: "desp",      label: "Despacho Terminal (miles TM)", type: "input", dec: 1, zero: true, total: "desp", scale: 1000},
+    {k: "mDesp",     label: "Margen Despacho Terminal (miles US$)", type: "calc",  dec: 0, scale: 1000},
     {k: "dl",        label: "DELTA VS 40 local (miles US$)", type: "calc",  dec: 0, scale: 1000},
     {k: "dt",        label: "DELTA VS 40 total (miles US$)", type: "calc",  dec: 0, total: "dt", scale: 1000}
   ];
@@ -543,10 +547,10 @@ window.addEventListener("error", function(e){
   }
 
   function recalcHist(){
-    var sums = {vol: 0, mUS: 0, soles: 0, cab: 0, dt: 0};
+    var sums = {vol: 0, mUS: 0, soles: 0, cab: 0, desp: 0, dt: 0};
     for (var i=0;i<12;i++){
       var c = histCalc(i), pc = i >= 8 ? " projcell" : "";
-      sums.vol += c.vol; sums.mUS += c.mUS; sums.soles += c.soles; sums.cab += c.cab; sums.dt += c.dt;
+      sums.vol += c.vol; sums.mUS += c.mUS; sums.soles += c.soles; sums.cab += c.cab; sums.desp += c.desp; sums.dt += c.dt;
       HROWS.forEach(function(r){
         if (r.type !== "calc") return;
         var el = document.getElementById("h_" + r.k + "_" + i);
@@ -657,6 +661,8 @@ window.addEventListener("error", function(e){
       "<input type='number' id='projVol"+pm.idx+"' value='"+v+"' placeholder='"+Math.round(refVol)+"'></div>" +
       "<div class='field'><label>Volumen cabotaje Pluspetrol proyectado (TM)</label>" +
       "<input type='number' id='projCab"+pm.idx+"' value='"+(state.hist.cab[pm.idx] || "")+"' placeholder='0'></div>" +
+      "<div class='field'><label>Despacho Terminal proyectado (TM)</label>" +
+      "<input type='number' id='projDesp"+pm.idx+"' value='"+((state.hist.desp && state.hist.desp[pm.idx]) || "")+"' placeholder='0'></div>" +
       "<div class='field'><label>Prima all in Importado (US$/TM)</label>" +
       "<input type='number' id='projImp"+pm.idx+"' value='"+im+"' placeholder='"+refImp.toFixed(1)+"'></div>" +
       "<div class='field'><label>Prima Local / Pluspetrol (US$/TM)</label>" +
@@ -879,6 +885,7 @@ window.addEventListener("error", function(e){
       dh.importado[i] = num("projImp", 0);
       dh.ppc[i] = num("projPpc", 0);
       dh.cab[i] = num("projCab", 0);
+      dh.desp[i] = num("projDesp", 0);
       dh.rad[i] = num("projRad", state.hist.rad[i]);
       dh.margenUS[i] = null;   // el margen pasa a calcularse con lo simulado
     });
@@ -1188,7 +1195,7 @@ window.addEventListener("error", function(e){
     if (h && typeof h === "object"){
       d.tc = numArr(h.tc, d.tc); d.volumen = numArr(h.volumen, d.volumen); d.ppc = numArr(h.ppc, d.ppc);
       d.importado = numArr(h.importado, d.importado); d.margenUS = numArr(h.margenUS, d.margenUS, true);
-      d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab);
+      d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab); d.desp = numArr(h.desp, d.desp);
     }
     if (!paramTimer){   // si hay un parámetro propio pendiente de guardar, no se pisa
       if (typeof datos.contratoGeogas === "number"){
@@ -1209,7 +1216,7 @@ window.addEventListener("error", function(e){
       var i = pm.idx, h = state.hist;
       var set = function(id, v){ document.getElementById(id + i).value = v ? v : ""; };
       if (getShips(i).n === 0){ set("projVol", h.volumen[i]); set("projImp", h.importado[i]); }
-      set("projPpc", h.ppc[i]); set("projCab", h.cab[i]);
+      set("projPpc", h.ppc[i]); set("projCab", h.cab[i]); set("projDesp", h.desp[i]);
       document.getElementById("projRad" + i).value = h.rad[i];
       updateShips(i);
     });
@@ -1254,7 +1261,7 @@ window.addEventListener("error", function(e){
     };
     document.getElementById("kpis").innerHTML =
       card("Margen importado YTD Enero–Agosto", ytd.mUS, ytd.vol, "Cerrado") +
-      card("Margen Set–Dic proyectado", sd.mUS, sd.vol, "Setiembre a Diciembre");
+      card("Margen Ene–Dic proyectado", ytd.mUS + sd.mUS, ytd.vol + sd.vol, "Cerrado + Setiembre a Diciembre proyectado");
   }
 
   // Estado de conexión, fecha de la vigente y detalle de buques

@@ -15,8 +15,9 @@ Pestañas:
 
 1. **Proyección** (la que ve el gerente) — estado de la proyección vigente
    (fecha de guardado y conexión), 2 tarjetas resumen (Margen importado YTD
-   Enero–Agosto y Margen Set–Dic proyectado, cada una con el total en miles de
-   US$ y el margen unitario US$/TM), la tabla mensual solo en USD y en miles
+   Enero–Agosto, solo cerrado, y Margen Ene–Dic proyectado, el año completo
+   con Set–Dic proyectado; cada una con el total en miles de US$ y el margen
+   unitario US$/TM), la tabla mensual solo en USD y en miles
    (volumen y cabotaje en miles de TM; margen importado, margen cabotaje y
    DELTA VS 40 en miles de US$; las primas, el margen unitario y el RAD se
    quedan en US$/TM, sin escalar — sin tipo de cambio ni soles), la tabla de
@@ -55,6 +56,7 @@ publicación son públicos, esos datos son públicos.
 - `Margen del importado US$ = Margen unitario × Volumen` (Ene–Ago: valor fijo de la planilla)
 - `Total Soles = Margen del importado US$ × TC del mes`
 - `Margen Cabotaje Pluspetrol = RAD × Volumen Cabotaje Pluspetrol`
+- `Margen Despacho Terminal = RAD × Despacho Terminal` (fuente Ene–Ago: `Despacho terminal.xlsx`; Set–Dic se completa con la simulación, igual que Cabotaje)
 - `DELTA VS 40 local = (RAD − 40) × Cabotaje`
 - `DELTA VS 40 total = (RAD − 40) × (Volumen + Cabotaje)`
 - Prima de un buque = prima base + demurrage + procura + otros gastos. La prima
