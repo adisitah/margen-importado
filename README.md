@@ -6,10 +6,7 @@ Base de datos: la planilla `margen-importacion-historico.xlsx`.
 
 ## Qué es hoy
 
-Un único archivo HTML (`index.html`), sin build. **Sin clave de acceso**: quien
-tenga el enlace puede ver la proyección, simular y guardar. La proyección vigente
-se comparte por Supabase (el mismo proyecto de `glp-dashboard`); si no hay
-conexión, usa `localStorage` del navegador como respaldo.
+
 
 Pestañas:
 
