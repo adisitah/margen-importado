@@ -235,6 +235,15 @@
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--muted); }
   .dot.on { background: var(--pos); } .dot.off { background: var(--neg); } .dot.wait { background: var(--accent); }
 
+  .badge { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 20px; display: inline-block; }
+  .badge.cerrado { background: var(--pos-bg); color: var(--pos); }
+  .badge.proy { background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  td.savewrap { position: relative; }
+  .savedot { position: absolute; top: 3px; right: 1px; width: 6px; height: 6px; border-radius: 50%; opacity: 0; transition: opacity .2s; }
+  .savedot.show { opacity: 1; background: var(--accent); }
+  .savedot.ok { background: var(--pos); }
+  .savedot.err { background: var(--neg); }
+
   .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
   @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .kpis { grid-template-columns: 1fr; } }
@@ -270,9 +279,8 @@
   <nav class="tabs">
     <button class="tab-btn active" data-tab="proy">Proyección</button>
     <button class="tab-btn" data-tab="sim">Nueva simulación</button>
-    <button class="tab-btn" data-tab="comp">Comparación de proveedores</button>
-    <button class="tab-btn" data-tab="rad">RAD (referencia)</button>
     <button class="tab-btn" data-tab="param">Parámetros</button>
+    <button class="tab-btn" data-tab="histdb">Data histórica</button>
   </nav>
 
   <!-- PROYECCIÓN VIGENTE -->
@@ -329,6 +337,28 @@
         <label>Prima base sugerida Trafigura (US$/TM)</label>
         <input type="number" id="primaTrafigura" class="mono" value="175" step="0.5">
         <span class="unit">Con buques: es la prima base de Trafigura. Otros proveedores usan el promedio ponderado de su histórico. En cada buque se puede fijar otra prima a mano.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- DATA HISTÓRICA (conectada en vivo a Supabase, editable) -->
+  <section class="panel" id="panel-histdb">
+    <div class="statusbar card" id="histdbStatus"></div>
+    <div class="card">
+      <h2>Data histórica mensual (Supabase)</h2>
+      <p class="sub">Tabla <code>margen_historico</code>, en unidades reales. Un clic sobre un número lo deja editar; se guarda solo unos segundos después de dejar de escribir. No afecta la proyección vigente ni la simulación.</p>
+      <div class="tablewrap">
+        <table class="mono" id="histdbTable">
+          <thead>
+            <tr>
+              <th style="text-align:left">Mes</th><th>Estado</th><th>TC</th><th>Volumen (TM)</th>
+              <th>Precio Referencia</th><th>Precio Importado</th><th>Margen unit.</th>
+              <th>Margen del importado (US$)</th><th>RAD</th><th>Cabotaje (TM)</th>
+              <th>Despacho Terminal (TM)</th><th>Margen Desp. Terminal (US$)</th>
+            </tr>
+          </thead>
+          <tbody id="histdbBody"></tbody>
+        </table>
       </div>
     </div>
   </section>
@@ -516,7 +546,6 @@ window.addEventListener("error", function(e){
     {k: "margimp",   label: "Margen del Importado",        type: "section"},
     {k: "volumen",   label: "Volumen importado (miles TM)", type: "input", dec: 1, total: "vol", scale: 1000},
     {k: "consumido", label: "Volumen Importado consumido (miles TM)", type: "calc", dec: 1, total: "consumido", scale: 1000},
-    {k: "precios",   label: "Precios",                     type: "section"},
     {k: "ppc",       label: "Precio Referencia (US$/TM)",  type: "input", dec: 0, zero: true},
     {k: "importado", label: "Precio Importado (US$/TM)",   type: "input", dec: 0, zero: true},
     {k: "mu",        label: "Margen unitario (US$/TM)",    type: "calc",  dec: 1},
@@ -1305,6 +1334,129 @@ window.addEventListener("error", function(e){
   refreshRemote();
   setInterval(function(){ if (!document.hidden && !remote.saving) refreshRemote(); }, 60000);   // el gerente ve los cambios sin recargar
   document.addEventListener("visibilitychange", function(){ if (!document.hidden && !remote.saving) refreshRemote(); });
+
+  // ---------- DATA HISTÓRICA (Supabase, tabla margen_historico) — independiente de state.hist; solo se activa al abrir la pestaña ----------
+  var HDB_TABLE = "margen_historico";
+  var hdbRows = null, hdbSaveTimers = {}, hdbLoaded = false;
+  var hdbCols = ["tipo_cambio", "volumen_tm", "precio_referencia", "precio_importado", "rad", "cabotaje_tm", "despacho_terminal_tm", "volumen_descarga_tm"];
+
+  function hdbSetStatus(state, text){
+    document.getElementById("histdbStatus").innerHTML =
+      "<div><div class='stt'>Data histórica en Supabase</div><div class='stc'><span class='dot " + state + "'></span>" + text + "</div></div>" +
+      "<div class='statacts'><button type='button' class='addbtn' id='hdbRefresh'>↻ Actualizar</button></div>";
+    var b = document.getElementById("hdbRefresh");
+    if (b) b.addEventListener("click", function(){ hdbLoad(); });
+  }
+
+  function hdbRecalc(r){
+    var pr = r.precio_referencia || 0, pi = r.precio_importado || 0, vol = r.volumen_tm || 0, rad = r.rad || 0, desp = r.despacho_terminal_tm || 0;
+    r.margen_unitario = Math.round((pr - pi) * 100) / 100;
+    r.margen_importado_us = Math.round(r.margen_unitario * vol);
+    r.margen_despacho_terminal_us = Math.round(rad * desp);
+  }
+
+  function hdbMesLabel(mes){
+    var p = mes.split("-"), i = parseInt(p[1], 10) - 1;
+    return (MONTHS[i] || mes) + " " + p[0];
+  }
+
+  function hdbRenderTable(){
+    var body = document.getElementById("histdbBody"), html = "";
+    var tieneDescarga = hdbRows.some(function(r){ return "volumen_descarga_tm" in r; });
+    document.querySelectorAll("#histdbTable thead .hdb-descarga").forEach(function(el){ el.remove(); });
+    if (tieneDescarga){
+      var th = document.createElement("th"); th.className = "hdb-descarga"; th.textContent = "Vol. Descarga (TM)";
+      document.querySelector("#histdbTable thead tr").appendChild(th);
+    }
+    hdbRows.forEach(function(r){
+      var num = function(field, dec){
+        var v = r[field];
+        return "<td class='savewrap'><input class='cell' type='number' step='0.01' data-mes='" + r.mes + "' data-field='" + field + "' value='" + (v === null || v === undefined ? "" : v) + "'>" +
+          "<span class='savedot' id='hdb_" + r.mes + "_" + field + "'></span></td>";
+      };
+      html += "<tr><td>" + hdbMesLabel(r.mes) + "</td>" +
+        "<td><span class='badge " + (r.cerrado ? "cerrado" : "proy") + "'>" + (r.cerrado ? "Cerrado" : "Proyectado") + "</span></td>" +
+        num("tipo_cambio", 2) + num("volumen_tm", 1) + num("precio_referencia", 2) + num("precio_importado", 2) +
+        "<td class='calc " + cls(r.margen_unitario) + "' id='hdbmu_" + r.mes + "'>" + fmt(r.margen_unitario, {dec:2}) + "</td>" +
+        "<td class='calc " + cls(r.margen_importado_us) + "' id='hdbmus_" + r.mes + "'>" + fmt(r.margen_importado_us) + "</td>" +
+        num("rad", 2) + num("cabotaje_tm", 1) + num("despacho_terminal_tm", 1) +
+        "<td class='calc' id='hdbmdesp_" + r.mes + "'>" + fmt(r.margen_despacho_terminal_us) + "</td>" +
+        (tieneDescarga ? num("volumen_descarga_tm", 1) : "") +
+        "</tr>";
+    });
+    body.innerHTML = html;
+  }
+
+  function hdbUpdateCalc(mes){
+    var r = hdbRows.filter(function(x){ return x.mes === mes; })[0];
+    if (!r) return;
+    hdbRecalc(r);
+    document.getElementById("hdbmu_" + mes).textContent = fmt(r.margen_unitario, {dec:2});
+    document.getElementById("hdbmu_" + mes).className = "calc " + cls(r.margen_unitario);
+    document.getElementById("hdbmus_" + mes).textContent = fmt(r.margen_importado_us);
+    document.getElementById("hdbmus_" + mes).className = "calc " + cls(r.margen_importado_us);
+    document.getElementById("hdbmdesp_" + mes).textContent = fmt(r.margen_despacho_terminal_us);
+  }
+
+  function hdbScheduleSave(mes, field){
+    var key = mes + "_" + field;
+    clearTimeout(hdbSaveTimers[key]);
+    var dot = document.getElementById("hdb_" + key);
+    if (dot) dot.className = "savedot show";
+    hdbSaveTimers[key] = setTimeout(function(){ hdbSaveRow(mes, dot); }, 900);
+  }
+
+  function hdbSaveRow(mes, dot){
+    var r = hdbRows.filter(function(x){ return x.mes === mes; })[0];
+    if (!r) return;
+    var body = {margen_unitario: r.margen_unitario, margen_importado_us: r.margen_importado_us, margen_despacho_terminal_us: r.margen_despacho_terminal_us, updated_at: new Date().toISOString()};
+    hdbCols.forEach(function(c){ if (c in r) body[c] = r[c]; });
+    fetch(SB.url + "/rest/v1/" + HDB_TABLE + "?mes=eq." + encodeURIComponent(mes), {
+      method: "PATCH", headers: sbHeaders({"Content-Type": "application/json", Prefer: "return=minimal"}), body: JSON.stringify(body)
+    }).then(function(res){
+      if (!res.ok) return res.text().then(function(t){ throw new Error("HTTP " + res.status + " " + t.slice(0,140)); });
+      if (dot) dot.className = "savedot show ok";
+      showToast(hdbMesLabel(mes) + " guardado en Supabase", "ok");
+      setTimeout(function(){ if (dot) dot.className = "savedot"; }, 1500);
+    }).catch(function(e){
+      if (dot) dot.className = "savedot show err";
+      showToast("No se pudo guardar " + hdbMesLabel(mes) + ": " + e.message, "err");
+    });
+  }
+
+  document.getElementById("histdbBody").addEventListener("input", function(e){
+    if (!e.target.classList.contains("cell")) return;
+    var mes = e.target.dataset.mes, field = e.target.dataset.field;
+    var r = hdbRows.filter(function(x){ return x.mes === mes; })[0];
+    if (!r) return;
+    r[field] = parseFloat(e.target.value);
+    if (isNaN(r[field])) r[field] = 0;
+    if (field === "precio_referencia" || field === "precio_importado" || field === "volumen_tm" || field === "rad" || field === "despacho_terminal_tm") hdbUpdateCalc(mes);
+    hdbScheduleSave(mes, field);
+  });
+
+  function hdbLoad(){
+    hdbSetStatus("wait", "Conectando…");
+    return fetch(SB.url + "/rest/v1/" + HDB_TABLE + "?select=*&order=mes", {headers: sbHeaders({Accept: "application/json"})})
+      .then(function(res){
+        if (!res.ok) return res.text().then(function(t){ throw new Error(res.status === 404 ? "la tabla aún no existe" : ("HTTP " + res.status)); });
+        return res.json();
+      })
+      .then(function(data){
+        hdbRows = data;
+        hdbRows.forEach(hdbRecalc);
+        hdbRenderTable();
+        hdbSetStatus("on", "Conectado · " + hdbRows.length + " meses");
+      })
+      .catch(function(e){
+        hdbSetStatus("off", "Sin conexión (" + esc(e.message) + ")");
+        showToast("No se pudo cargar Data histórica: " + e.message, "err");
+      });
+  }
+
+  document.querySelector(".tab-btn[data-tab='histdb']").addEventListener("click", function(){
+    if (!hdbLoaded){ hdbLoaded = true; hdbLoad(); }
+  });
 
 })();
 </script>
