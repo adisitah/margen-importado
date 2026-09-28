@@ -548,9 +548,8 @@ window.addEventListener("error", function(e){
   // scale: 1000 muestra la fila en miles (TM o US$); las primas y tasas por TM se quedan en su unidad natural.
   var HROWS = [
     {k: "margimp",   label: "Margen del Importado",        type: "section"},
-    {k: "volumen",   label: "Volumen importado (miles TM)", type: "input", dec: 1, total: "vol", scale: 1000},
-    {k: "consumido", label: "Volumen Importado consumido (miles TM)", type: "calc", dec: 1, total: "consumido", scale: 1000},
     {k: "vdesc",     label: "Volumen Descarga (miles TM)", type: "input", dec: 1, zero: true, total: "vdesc", scale: 1000},
+    {k: "consumido", label: "Volumen Importado consumido (miles TM)", type: "calc", dec: 1, total: "consumido", scale: 1000},
     {k: "ppc",       label: "Precio Referencia (US$/TM)",  type: "input", dec: 0, zero: true},
     {k: "importado", label: "Precio Importado (US$/TM)",   type: "input", dec: 0, zero: true},
     {k: "mu",        label: "Margen unitario (US$/TM)",    type: "calc",  dec: 1},
