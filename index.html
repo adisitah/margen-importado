@@ -435,7 +435,9 @@ window.addEventListener("error", function(e){
       rad:       [40,39,43,27,26,31,69,96,55,39,39,39],
       cab:       [0,20575,0,6509,15405,6300,8500,5002,13000,13000,13000,13000],
       // Fuente: Despacho terminal.xlsx. Ene–Ago cerrado; Set–Dic se completa con la simulación (igual que Cabotaje).
-      desp:      [48600,37360,41175,46770,53383,49504,51259,55773,0,0,0,0]
+      desp:      [48600,37360,41175,46770,53383,49504,51259,55773,0,0,0,0],
+      // Fuente: tabla margen_historico (Supabase), columna volumen_descarga_tm. Ene–Ago cerrado; Set–Dic aún sin dato.
+      vdesc:     [20000,1204,42561,37197,32872,37433,41138,48447,0,0,0,0]
     },
     comp: [
       {nombre:"BW",             fecha:"2026-01-09", tms:5003,     plus:132.75, buque:116.8},
@@ -501,6 +503,7 @@ window.addEventListener("error", function(e){
         d.tc = numArr(h.tc, d.tc); d.volumen = numArr(h.volumen, d.volumen); d.ppc = numArr(h.ppc, d.ppc);
         d.importado = numArr(h.importado, d.importado); d.margenUS = numArr(h.margenUS, d.margenUS, true);
         d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab); d.desp = numArr(h.desp, d.desp);
+        d.vdesc = numArr(h.vdesc, d.vdesc);
       }
       if (Array.isArray(saved.comp)) st.comp = saved.comp.filter(function(d){ return d && typeof d === "object"; });
       if (Array.isArray(saved.rad)) st.rad = saved.rad;
@@ -532,11 +535,12 @@ window.addEventListener("error", function(e){
   function histCalc(i, h){
     h = h || state.hist;
     var vol = h.volumen[i] || 0, ppc = h.ppc[i] || 0, imp = h.importado[i] || 0, tc = h.tc[i] || 0, rad = h.rad[i] || 0, cab = h.cab[i] || 0, desp = (h.desp && h.desp[i]) || 0;
+    var vdesc = (h.vdesc && h.vdesc[i]) || 0;
     var consumido = vol;                                                                     // Volumen Importado consumido (por ahora, igual al Volumen importado)
     var mu = (ppc === 0 && imp === 0) ? 0 : ppc - imp;                                       // Margen unitario
     var fixedM = h.margenUS[i];
     var mUS = (fixedM !== null && fixedM !== undefined) ? fixedM : mu * consumido;            // Margen del importado US$ (fijo en la planilla o calculado sobre el volumen consumido)
-    return {vol: vol, consumido: consumido, ppc: ppc, imp: imp, tc: tc, rad: rad, cab: cab, desp: desp, mu: mu, mUS: mUS, soles: mUS * tc,
+    return {vol: vol, consumido: consumido, ppc: ppc, imp: imp, tc: tc, rad: rad, cab: cab, desp: desp, vdesc: vdesc, mu: mu, mUS: mUS, soles: mUS * tc,
       mc: rad * cab, mDesp: rad * desp, dl: (rad - 40) * cab, dt: (rad - 40) * (vol + cab)};
 }
 
@@ -546,6 +550,7 @@ window.addEventListener("error", function(e){
     {k: "margimp",   label: "Margen del Importado",        type: "section"},
     {k: "volumen",   label: "Volumen importado (miles TM)", type: "input", dec: 1, total: "vol", scale: 1000},
     {k: "consumido", label: "Volumen Importado consumido (miles TM)", type: "calc", dec: 1, total: "consumido", scale: 1000},
+    {k: "vdesc",     label: "Volumen Descarga (miles TM)", type: "input", dec: 1, zero: true, total: "vdesc", scale: 1000},
     {k: "ppc",       label: "Precio Referencia (US$/TM)",  type: "input", dec: 0, zero: true},
     {k: "importado", label: "Precio Importado (US$/TM)",   type: "input", dec: 0, zero: true},
     {k: "mu",        label: "Margen unitario (US$/TM)",    type: "calc",  dec: 1},
@@ -582,10 +587,10 @@ window.addEventListener("error", function(e){
   }
 
   function recalcHist(){
-    var sums = {vol: 0, consumido: 0, mUS: 0, soles: 0, cab: 0, desp: 0, dt: 0};
+    var sums = {vol: 0, consumido: 0, mUS: 0, soles: 0, cab: 0, desp: 0, vdesc: 0, dt: 0};
     for (var i=0;i<12;i++){
       var c = histCalc(i), pc = i >= 8 ? " projcell" : "";
-      sums.vol += c.vol; sums.consumido += c.consumido; sums.mUS += c.mUS; sums.soles += c.soles; sums.cab += c.cab; sums.desp += c.desp; sums.dt += c.dt;
+      sums.vol += c.vol; sums.consumido += c.consumido; sums.mUS += c.mUS; sums.soles += c.soles; sums.cab += c.cab; sums.desp += c.desp; sums.vdesc += c.vdesc; sums.dt += c.dt;
       HROWS.forEach(function(r){
         if (r.type !== "calc") return;
         var el = document.getElementById("h_" + r.k + "_" + i);
@@ -1228,6 +1233,7 @@ window.addEventListener("error", function(e){
       d.tc = numArr(h.tc, d.tc); d.volumen = numArr(h.volumen, d.volumen); d.ppc = numArr(h.ppc, d.ppc);
       d.importado = numArr(h.importado, d.importado); d.margenUS = numArr(h.margenUS, d.margenUS, true);
       d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab); d.desp = numArr(h.desp, d.desp);
+      d.vdesc = numArr(h.vdesc, d.vdesc);
     }
     if (!paramTimer){   // si hay un parámetro propio pendiente de guardar, no se pisa
       if (typeof datos.contratoGeogas === "number"){
