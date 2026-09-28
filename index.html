@@ -989,6 +989,7 @@ window.addEventListener("error", function(e){
     remoteSave().then(function(){
       remote.state = "ok"; remote.hasRow = true; remote.saving = false; renderVigente();
       showToast("Proyección vigente guardada y compartida", "ok");
+      syncHistoricoPrecios().catch(function(e){ if (window.console) console.warn("margen_historico (precios):", e.message); });
     }).catch(function(e){
       remote.state = "error"; remote.msg = e.message; remote.saving = false; renderVigente();
       showToast("No se pudo compartir la proyección (" + e.message + "): quedó guardada solo en este navegador.", "err");
@@ -1222,6 +1223,22 @@ window.addEventListener("error", function(e){
       body: JSON.stringify({id: SB.id, datos: datos, updated_at: new Date().toISOString()})
     }).then(function(r){
       if (!r.ok) return r.text().then(function(t){ if (window.console) console.warn("margen_proyeccion:", r.status, t); throw new Error("HTTP " + r.status); });
+    });
+  }
+  // Empuja Precio Referencia / Precio Importado (y sus derivados) de los 12 meses a margen_historico,
+  // para que esa tabla quede siempre igual a la proyección vigente. No toca las demás columnas.
+  function syncHistoricoPrecios(){
+    var h = state.hist, rows = [];
+    for (var i = 0; i < 12; i++){
+      var mes = "2026-" + (i < 9 ? "0" : "") + (i + 1);
+      var pr = h.ppc[i] || 0, pi = h.importado[i] || 0, vol = h.volumen[i] || 0;
+      var mu = Math.round((pr - pi) * 100) / 100;
+      rows.push({mes: mes, precio_referencia: pr, precio_importado: pi, margen_unitario: mu, margen_importado_us: Math.round(mu * vol)});
+    }
+    return fetch(SB.url + "/rest/v1/margen_historico?on_conflict=mes", {
+      method: "POST",
+      headers: sbHeaders({"Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal"}),
+      body: JSON.stringify(rows)
     });
   }
 
