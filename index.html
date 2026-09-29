@@ -1225,15 +1225,16 @@ window.addEventListener("error", function(e){
       if (!r.ok) return r.text().then(function(t){ if (window.console) console.warn("margen_proyeccion:", r.status, t); throw new Error("HTTP " + r.status); });
     });
   }
-  // Empuja Precio Referencia / Precio Importado (y sus derivados) de los 12 meses a margen_historico,
-  // para que esa tabla quede siempre igual a la proyección vigente. No toca las demás columnas.
+  // Empuja Precio Referencia/Importado, Despacho Terminal y Volumen Descarga (y sus derivados) de los 12 meses
+  // a margen_historico, para que esa tabla quede siempre igual a la proyección vigente. No toca las demás columnas.
   function syncHistoricoPrecios(){
     var h = state.hist, rows = [];
     for (var i = 0; i < 12; i++){
       var mes = "2026-" + (i < 9 ? "0" : "") + (i + 1);
-      var pr = h.ppc[i] || 0, pi = h.importado[i] || 0, vol = h.volumen[i] || 0;
+      var pr = h.ppc[i] || 0, pi = h.importado[i] || 0, vol = h.volumen[i] || 0, rad = h.rad[i] || 0, desp = (h.desp && h.desp[i]) || 0;
       var mu = Math.round((pr - pi) * 100) / 100;
-      rows.push({mes: mes, precio_referencia: pr, precio_importado: pi, margen_unitario: mu, margen_importado_us: Math.round(mu * vol)});
+      rows.push({mes: mes, precio_referencia: pr, precio_importado: pi, margen_unitario: mu, margen_importado_us: Math.round(mu * vol),
+        despacho_terminal_tm: desp, margen_despacho_terminal_us: Math.round(rad * desp), volumen_descarga_tm: (h.vdesc && h.vdesc[i]) || 0});
     }
     return fetch(SB.url + "/rest/v1/margen_historico?on_conflict=mes", {
       method: "POST",
@@ -1246,11 +1247,10 @@ window.addEventListener("error", function(e){
     if (!datos || typeof datos !== "object") return;
     var h = datos.hist, d = state.hist;
     if (h && typeof h === "object"){
-      // ppc/importado (Precio Referencia/Importado) ya no vienen de aquí: los manda margen_historico (loadHistoricoPrecios).
+      // ppc/importado/desp/vdesc ya no vienen de aquí: los manda margen_historico (loadHistoricoPrecios).
       d.tc = numArr(h.tc, d.tc); d.volumen = numArr(h.volumen, d.volumen);
       d.margenUS = numArr(h.margenUS, d.margenUS, true);
-      d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab); d.desp = numArr(h.desp, d.desp);
-      d.vdesc = numArr(h.vdesc, d.vdesc);
+      d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab);
     }
     if (!paramTimer){   // si hay un parámetro propio pendiente de guardar, no se pisa
       if (typeof datos.contratoGeogas === "number"){
@@ -1293,7 +1293,8 @@ window.addEventListener("error", function(e){
     });
   }
 
-  // margen_historico manda: Precio Referencia/Importado de la tabla principal se leen en vivo de ahí (12 meses).
+  // margen_historico manda: Precio Referencia/Importado, Despacho Terminal y Volumen Descarga de la
+  // tabla principal se leen en vivo de ahí (12 meses).
   function applyHistoricoPrecios(rows){
     if (!Array.isArray(rows)) return;
     rows.forEach(function(row){
@@ -1301,13 +1302,15 @@ window.addEventListener("error", function(e){
       if (i < 0 || i > 11) return;
       if (typeof row.precio_referencia === "number") state.hist.ppc[i] = row.precio_referencia;
       if (typeof row.precio_importado === "number") state.hist.importado[i] = row.precio_importado;
+      if (typeof row.despacho_terminal_tm === "number") state.hist.desp[i] = row.despacho_terminal_tm;
+      if (typeof row.volumen_descarga_tm === "number") state.hist.vdesc[i] = row.volumen_descarga_tm;
     });
     buildHistTable(); recalcHist(); renderKpis();
     if (!simDirty) fillSimInputs();
     persist();
   }
   function loadHistoricoPrecios(){
-    return fetch(SB.url + "/rest/v1/margen_historico?select=mes,precio_referencia,precio_importado&order=mes", {headers: sbHeaders({Accept: "application/json"})})
+    return fetch(SB.url + "/rest/v1/margen_historico?select=mes,precio_referencia,precio_importado,despacho_terminal_tm,volumen_descarga_tm&order=mes", {headers: sbHeaders({Accept: "application/json"})})
       .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(applyHistoricoPrecios)
       .catch(function(e){ if (window.console) console.warn("margen_historico (precios):", e.message); });
