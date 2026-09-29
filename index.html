@@ -223,6 +223,8 @@
   .simcol .ref { font-size: 10.5px; color: var(--muted); margin-top: -6px; margin-bottom: 10px; }
   .simcol .ref.refppc { font-size: 10.5px; color: var(--accent-ink); }
   .simcol .ref.refppc b { font-weight: 600; }
+  #refPpcNote.ref.refppc { font-size: 11.5px; color: var(--accent-ink); margin: -6px 0 12px; }
+  #refPpcNote.ref.refppc b { font-weight: 600; }
 
   td.projcell, th.projcell { background: var(--pos-bg); }
   td.locked { color: var(--muted); background: var(--surface-2); }
@@ -312,6 +314,7 @@
     <div class="card" id="simCard">
       <h2>Nueva simulación Set–Dic</h2>
       <div class="simcols" id="simCols"></div>
+      <div class="ref refppc" id="refPpcNote"></div>
       <button class="addbtn" id="btnSimular" style="border-style:solid;border-color:var(--accent);color:var(--accent-ink);font-weight:600;">Simular →</button>
     </div>
   </section>
@@ -737,12 +740,12 @@ window.addEventListener("error", function(e){
       "<div class='field'><label>MB mes (US$/TM)</label><input type='number' step='0.01' id='projRefMb"+i+"' value='"+mb+"' placeholder='0'></div>" +
       "<div class='field'><label>Prima Plus (US$/TM)</label><input type='number' step='0.01' id='projRefPrima"+i+"' value='"+primaPlus+"' placeholder='0'></div>" +
       "</div></details>" +
-      "<div class='ref refppc'>Últ. mes: <b>"+refPpcMes.toFixed(1)+"</b> · Últ. 3m: <b>"+refPpc3m.toFixed(1)+"</b> · Últ. año: <b>"+refPpcAnio.toFixed(1)+"</b></div>" +
       "<div class='field'><label>RAD (US$/TM)</label>" +
       "<input type='number' step='0.01' id='projRad"+i+"' value='"+h.rad[i]+"'></div>" +
       "</div>";
   });
   simCols.innerHTML = simHtml;
+  document.getElementById("refPpcNote").innerHTML = "Precio Referencia — Últ. mes: <b>"+refPpcMes.toFixed(1)+"</b> · Últ. 3m: <b>"+refPpc3m.toFixed(1)+"</b> · Últ. año: <b>"+refPpcAnio.toFixed(1)+"</b>";
 
   // Precio Importado = MP + Prima + Demurrage + Procura + Ley (solo modo manual) · Precio Referencia = MB mes + Prima Plus
   function recalcProjTotals(idx){
