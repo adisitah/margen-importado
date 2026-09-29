@@ -168,6 +168,12 @@
   }
   .simcol .field input[readonly] { background: transparent; border-style: dashed; }
   .simcol .fieldgrp { border-left: 2px solid var(--border); padding-left: 10px; margin-bottom: 10px; }
+  .simcol details.pricebreak { margin: -4px 0 14px; }
+  .simcol details.pricebreak summary { font-size: 11px; color: var(--accent-ink); cursor: pointer; margin-bottom: 8px; list-style: none; }
+  .simcol details.pricebreak summary::-webkit-details-marker { display: none; }
+  .simcol details.pricebreak summary::before { content: "▸ "; }
+  .simcol details.pricebreak[open] summary::before { content: "▾ "; }
+  .simcol details.pricebreak .fieldgrp { margin-bottom: 0; }
   .simcol .monthhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
   .simcol .monthhead h3 { margin: 0; }
   .shipbtn {
@@ -718,19 +724,19 @@ window.addEventListener("error", function(e){
       "<input type='number' id='projVol"+i+"' value='"+v+"' placeholder='"+Math.round(refVol)+"'></div>" +
       "<div class='field'><label>Despacho Terminal proyectado (TM)</label>" +
       "<input type='number' id='projDesp"+i+"' value='"+((h.desp && h.desp[i]) || "")+"' placeholder='0'></div>" +
-      "<div class='fieldgrp'>" +
+      "<div class='field'><label>Precio Importado (US$/TM)</label><input type='number' id='projImp"+i+"' value='"+im+"' readonly></div>" +
+      "<details class='pricebreak'><summary>Desglosar Precio Importado (MP + Prima + Demurrage + Procura + Ley)</summary><div class='fieldgrp'>" +
       "<div class='field'><label>Precio materia prima MP (US$/TM)</label><input type='number' step='0.01' id='projImpMp"+i+"' value='"+mp+"' placeholder='0'></div>" +
       "<div class='field'><label>Prima (US$/TM)</label><input type='number' step='0.01' id='projImpPrima"+i+"' value='"+prima+"' placeholder='0'></div>" +
       "<div class='field'><label>Demurrage (US$/TM)</label><input type='number' step='0.01' id='projImpDem"+i+"' value='"+dem+"' placeholder='0'></div>" +
       "<div class='field'><label>Procura (US$/TM)</label><input type='number' step='0.01' id='projImpProcura"+i+"' value='"+procura+"' placeholder='0'></div>" +
       "<div class='field'><label>Ley (US$/TM)</label><input type='number' step='0.01' id='projImpLey"+i+"' value='"+ley+"' placeholder='0'></div>" +
-      "<div class='field'><label>Precio Importado (US$/TM)</label><input type='number' id='projImp"+i+"' value='"+im+"' readonly></div>" +
-      "</div>" +
-      "<div class='fieldgrp'>" +
+      "</div></details>" +
+      "<div class='field'><label>Precio Referencia (US$/TM)</label><input type='number' id='projPpc"+i+"' value='"+p+"' readonly></div>" +
+      "<details class='pricebreak'><summary>Desglosar Precio Referencia (MB mes + Prima Plus)</summary><div class='fieldgrp'>" +
       "<div class='field'><label>MB mes (US$/TM)</label><input type='number' step='0.01' id='projRefMb"+i+"' value='"+mb+"' placeholder='0'></div>" +
       "<div class='field'><label>Prima Plus (US$/TM)</label><input type='number' step='0.01' id='projRefPrima"+i+"' value='"+primaPlus+"' placeholder='0'></div>" +
-      "<div class='field'><label>Precio Referencia (US$/TM)</label><input type='number' id='projPpc"+i+"' value='"+p+"' readonly></div>" +
-      "</div>" +
+      "</div></details>" +
       "<div class='ref refppc'>Últ. mes: <b>"+refPpcMes.toFixed(1)+"</b> · Últ. 3m: <b>"+refPpc3m.toFixed(1)+"</b> · Últ. año: <b>"+refPpcAnio.toFixed(1)+"</b></div>" +
       "<div class='field'><label>RAD (US$/TM)</label>" +
       "<input type='number' step='0.01' id='projRad"+i+"' value='"+h.rad[i]+"'></div>" +
