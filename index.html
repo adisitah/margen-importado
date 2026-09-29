@@ -348,6 +348,20 @@
         <input type="number" id="primaTrafigura" class="mono" value="175" step="0.5">
         <span class="unit">Con buques: es la prima base de Trafigura. Otros proveedores usan el promedio ponderado de su histórico. En cada buque se puede fijar otra prima a mano.</span>
       </div>
+      <h2 style="margin-top:22px">Precio Referencia — promedios</h2>
+      <p class="sub">Se muestran como referencia en Nueva simulación. Se guardan y se comparten igual que los demás parámetros.</p>
+      <div class="tcrow">
+        <label>Últ. mes (US$/TM)</label>
+        <input type="number" id="refPpcMesInput" class="mono" value="157.34" step="0.01">
+      </div>
+      <div class="tcrow">
+        <label>Últ. 3 meses (US$/TM)</label>
+        <input type="number" id="refPpc3mInput" class="mono" value="184.49" step="0.01">
+      </div>
+      <div class="tcrow">
+        <label>Últ. año (US$/TM)</label>
+        <input type="number" id="refPpcAnioInput" class="mono" value="153.33" step="0.01">
+      </div>
     </div>
   </section>
 
@@ -532,6 +546,9 @@ window.addEventListener("error", function(e){
       if (saved.ships && typeof saved.ships === "object" && !Array.isArray(saved.ships)) st.ships = saved.ships;
       if (typeof saved.contratoGeogas === "number") st.contratoGeogas = saved.contratoGeogas;
       if (typeof saved.primaTrafigura === "number") st.primaTrafigura = saved.primaTrafigura;
+      if (typeof saved.refPpcMes === "number") st.refPpcMes = saved.refPpcMes;
+      if (typeof saved.refPpc3m === "number") st.refPpc3m = saved.refPpc3m;
+      if (typeof saved.refPpcAnio === "number") st.refPpcAnio = saved.refPpcAnio;
       if (!legacy && saved.vigente && typeof saved.vigente === "object"){
         st.vigente = {savedAt: typeof saved.vigente.savedAt === "string" ? saved.vigente.savedAt : "",
           shipDetail: Array.isArray(saved.vigente.shipDetail) ? saved.vigente.shipDetail : []};
@@ -644,8 +661,10 @@ window.addEventListener("error", function(e){
   ];
   var simCols = document.getElementById("simCols");
   var refVol = avgOf(state.hist.volumen);
-  // Precio Referencia (CFR Pluspetrol) — promedios de referencia calculados al 16/09/2026 sobre la serie diaria
-  var refPpcMes = 157.34, refPpc3m = 184.49, refPpcAnio = 153.33;
+  // Precio Referencia (CFR Pluspetrol) — promedios editables en Parámetros; se guardan y comparten como state.refPpcMes/refPpc3m/refPpcAnio.
+  if (typeof state.refPpcMes !== "number") state.refPpcMes = 157.34;
+  if (typeof state.refPpc3m !== "number") state.refPpc3m = 184.49;
+  if (typeof state.refPpcAnio !== "number") state.refPpcAnio = 153.33;
 
   // Buques por mes: proveedor + capacidad. Prima = contrato (Geogas) o histórico ponderado (otros).
   var MAX_SHIPS = 4;
@@ -745,7 +764,10 @@ window.addEventListener("error", function(e){
       "</div>";
   });
   simCols.innerHTML = simHtml;
-  document.getElementById("refPpcNote").innerHTML = "Precio Referencia — Últ. mes: <b>"+refPpcMes.toFixed(1)+"</b> · Últ. 3m: <b>"+refPpc3m.toFixed(1)+"</b> · Últ. año: <b>"+refPpcAnio.toFixed(1)+"</b>";
+  function updateRefPpcNote(){
+    document.getElementById("refPpcNote").innerHTML = "Precio Referencia — Últ. mes: <b>"+state.refPpcMes.toFixed(1)+"</b> · Últ. 3m: <b>"+state.refPpc3m.toFixed(1)+"</b> · Últ. año: <b>"+state.refPpcAnio.toFixed(1)+"</b>";
+  }
+  updateRefPpcNote();
 
   // Precio Importado = MP + Prima + Demurrage + Procura + Ley (solo modo manual) · Precio Referencia = MB mes + Prima Plus
   function recalcProjTotals(idx){
@@ -890,19 +912,22 @@ window.addEventListener("error", function(e){
         .catch(function(e){ remote.state = "error"; remote.msg = e.message; remote.saving = false; renderVigente(); showToast("No se pudo guardar el parámetro (" + e.message + ").", "err"); });
     }, 1200);
   }
-  function bindParam(id, key){
+  function bindParam(id, key, onChange){
     var el = document.getElementById(id);
     el.value = state[key];
     el.addEventListener("input", function(){
       state[key] = parseFloat(el.value) || 0;
-      projMonths.forEach(function(pm){ updateShips(pm.idx); });
+      if (onChange) onChange();
       persist();
       scheduleParams();
     });
     return el;
   }
-  var contratoInput = bindParam("contratoGeogas", "contratoGeogas");
-  var trafiguraInput = bindParam("primaTrafigura", "primaTrafigura");
+  var contratoInput = bindParam("contratoGeogas", "contratoGeogas", function(){ projMonths.forEach(function(pm){ updateShips(pm.idx); }); });
+  var trafiguraInput = bindParam("primaTrafigura", "primaTrafigura", function(){ projMonths.forEach(function(pm){ updateShips(pm.idx); }); });
+  var refPpcMesInput = bindParam("refPpcMesInput", "refPpcMes", updateRefPpcNote);
+  var refPpc3mInput = bindParam("refPpc3mInput", "refPpc3m", updateRefPpcNote);
+  var refPpcAnioInput = bindParam("refPpcAnioInput", "refPpcAnio", updateRefPpcNote);
 
   // Simular arma un borrador y lo compara con la vigente; solo "Guardar como vigente" lo reemplaza
   document.getElementById("btnSimular").addEventListener("click", function(){
@@ -1277,7 +1302,8 @@ window.addEventListener("error", function(e){
       .then(function(rows){ return rows && rows[0] ? rows[0] : null; });
   }
   function remoteSave(){
-    var datos = {hist: state.hist, shipDetail: state.vigente.shipDetail, contratoGeogas: state.contratoGeogas, primaTrafigura: state.primaTrafigura, savedAt: state.vigente.savedAt};
+    var datos = {hist: state.hist, shipDetail: state.vigente.shipDetail, contratoGeogas: state.contratoGeogas, primaTrafigura: state.primaTrafigura,
+      refPpcMes: state.refPpcMes, refPpc3m: state.refPpc3m, refPpcAnio: state.refPpcAnio, savedAt: state.vigente.savedAt};
     return fetch(SB.url + "/rest/v1/" + SB.table + "?on_conflict=id", {
       method: "POST",
       headers: sbHeaders({"Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal"}),
@@ -1325,6 +1351,19 @@ window.addEventListener("error", function(e){
         state.primaTrafigura = datos.primaTrafigura;
         if (document.activeElement !== trafiguraInput) trafiguraInput.value = state.primaTrafigura;
       }
+      if (typeof datos.refPpcMes === "number"){
+        state.refPpcMes = datos.refPpcMes;
+        if (document.activeElement !== refPpcMesInput) refPpcMesInput.value = state.refPpcMes;
+      }
+      if (typeof datos.refPpc3m === "number"){
+        state.refPpc3m = datos.refPpc3m;
+        if (document.activeElement !== refPpc3mInput) refPpc3mInput.value = state.refPpc3m;
+      }
+      if (typeof datos.refPpcAnio === "number"){
+        state.refPpcAnio = datos.refPpcAnio;
+        if (document.activeElement !== refPpcAnioInput) refPpcAnioInput.value = state.refPpcAnio;
+      }
+      updateRefPpcNote();
     }
     state.vigente = {savedAt: typeof datos.savedAt === "string" ? datos.savedAt : "", shipDetail: Array.isArray(datos.shipDetail) ? datos.shipDetail : []};
   }
