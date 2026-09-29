@@ -725,7 +725,7 @@ window.addEventListener("error", function(e){
       "<div class='field'><label>Despacho Terminal proyectado (TM)</label>" +
       "<input type='number' id='projDesp"+i+"' value='"+((h.desp && h.desp[i]) || "")+"' placeholder='0'></div>" +
       "<div class='field'><label>Precio Importado (US$/TM)</label><input type='number' id='projImp"+i+"' value='"+im+"' readonly></div>" +
-      "<details class='pricebreak'><summary>Desglosar Precio Importado (MP + Prima + Demurrage + Procura + Ley)</summary><div class='fieldgrp'>" +
+      "<details class='pricebreak' id='impBreak"+i+"'><summary>Desglosar Precio Importado (MP + Prima + Demurrage + Procura + Ley)</summary><div class='fieldgrp'>" +
       "<div class='field'><label>Precio materia prima MP (US$/TM)</label><input type='number' step='0.01' id='projImpMp"+i+"' value='"+mp+"' placeholder='0'></div>" +
       "<div class='field'><label>Prima (US$/TM)</label><input type='number' step='0.01' id='projImpPrima"+i+"' value='"+prima+"' placeholder='0'></div>" +
       "<div class='field'><label>Demurrage (US$/TM)</label><input type='number' step='0.01' id='projImpDem"+i+"' value='"+dem+"' placeholder='0'></div>" +
@@ -810,6 +810,8 @@ window.addEventListener("error", function(e){
       var el = document.getElementById(pfx+idx);
       if (el) el.readOnly = s.n > 0;
     });
+    var impBreakEl = document.getElementById("impBreak"+idx);
+    if (impBreakEl) impBreakEl.style.display = s.n > 0 ? "none" : "";   // el desglose de Precio Importado solo tiene sentido en modo manual; con buques vive en el popup
     if (s.n > 0){
       volEl.value = vol || "";
       impEl.value = vol ? Math.round(prima * 100) / 100 : "";
@@ -830,7 +832,7 @@ window.addEventListener("error", function(e){
           : (s.items[j].prov === "__otro" ? "Ingresa la prima" : "Sin histórico para este proveedor: ingresa la prima");
       }
       document.getElementById("dlgSum").textContent = s.n && vol
-        ? "Volumen del mes: " + fmt(vol) + " TM · Prima total ponderada: " + fmt(prima,{dec:2}) + " US$/TM" : "";
+        ? "Volumen del mes: " + fmt(vol) + " TM · Precio ponderado: " + fmt(prima,{dec:2}) + " US$/TM" : "";
       document.getElementById("dlgWarn").textContent = missing ? "⚠ Buque(s) sin prima: no entran en el cálculo" : "";
     }
   }
@@ -991,7 +993,7 @@ window.addEventListener("error", function(e){
 
   function shipsTableHtml(ships){
     if (!ships.length) return "";
-    var h = "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Buque</th><th>Proveedor</th><th>Capacidad (TM)</th><th>MP</th><th>Prima</th><th>Demurrage</th><th>Procura</th><th>Ley</th><th>Prima total</th></tr></thead><tbody>";
+    var h = "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Buque</th><th>Proveedor</th><th>Capacidad (TM)</th><th>MP</th><th>Prima</th><th>Demurrage</th><th>Procura</th><th>Ley</th><th>Precio Total</th></tr></thead><tbody>";
     ships.forEach(function(s){
       h += "<tr><td>" + esc(s.mes) + "</td><td>" + s.k + "</td><td>" + esc(s.prov) + "</td><td>" + fmt(s.cap) + "</td><td>" + fmt(s.mp,{dec:2}) + "</td><td>" + (s.base === null ? "—" : fmt(s.base,{dec:2})) +
         "</td><td>" + fmt(s.dem,{dec:2}) + "</td><td>" + fmt(s.procura,{dec:2}) + "</td><td>" + fmt(s.ley,{dec:2}) + "</td><td>" + (s.total === null ? "—" : fmt(s.total,{dec:2})) + "</td></tr>";
