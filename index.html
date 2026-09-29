@@ -580,7 +580,7 @@ window.addEventListener("error", function(e){
   ];
 
   function buildHistTable(){
-    var html = "<thead><tr><th>Variable</th>";
+    var html = "<thead><tr><th></th>";
     MONTHS_SHORT.forEach(function(m,i){ html += "<th" + (i>=8?" class='projcell'":"") + ">" + m + "</th>"; });
     html += "<th>Total</th></tr></thead><tbody>";
     HROWS.forEach(function(r){
@@ -645,7 +645,7 @@ window.addEventListener("error", function(e){
   var refPpcMes = 157.34, refPpc3m = 184.49, refPpcAnio = 153.33;
 
   // Buques por mes: proveedor + capacidad. Prima = contrato (Geogas) o histórico ponderado (otros).
-  var MAX_SHIPS = 3;
+  var MAX_SHIPS = 4;
   if (typeof state.contratoGeogas !== "number") state.contratoGeogas = 114;
   if (typeof state.primaTrafigura !== "number") state.primaTrafigura = 175;
   state.ships = state.ships || {};
@@ -762,7 +762,7 @@ window.addEventListener("error", function(e){
     "<div class='dlghead'><h3 id='dlgTitle'></h3><button type='button' class='rowbtn' id='dlgX' aria-label='Cerrar'>✕</button></div>" +
     "<div class='dlgfield'><label>Nº de buques</label><select id='dlgN'>" +
     "<option value='0'>Manual (volumen y prima a mano en la columna del mes)</option>" +
-    "<option value='1'>1 buque</option><option value='2'>2 buques</option><option value='3'>3 buques</option></select></div>" +
+    "<option value='1'>1 buque</option><option value='2'>2 buques</option><option value='3'>3 buques</option><option value='4'>4 buques</option></select></div>" +
     "<div id='dlgShips'></div>" +
     "<div class='dlgsum' id='dlgSum'></div><div class='ref shipwarn' id='dlgWarn'></div>" +
     "<div class='dlgfoot'><button type='button' class='addbtn' id='dlgOk' style='border-style:solid;border-color:var(--accent);color:var(--accent-ink);font-weight:600;'>Listo</button></div>";
