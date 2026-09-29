@@ -167,6 +167,7 @@
     border: 1px solid var(--border); border-radius: 5px; background: var(--surface-2); color: var(--ink);
   }
   .simcol .field input[readonly] { background: transparent; border-style: dashed; }
+  .simcol .fieldgrp { border-left: 2px solid var(--border); padding-left: 10px; margin-bottom: 10px; }
   .simcol .monthhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
   .simcol .monthhead h3 { margin: 0; }
   .shipbtn {
@@ -437,7 +438,16 @@ window.addEventListener("error", function(e){
       // Fuente: Despacho terminal.xlsx. Ene–Ago cerrado; Set–Dic se completa con la simulación (igual que Cabotaje).
       desp:      [48600,37360,41175,46770,53383,49504,51259,55773,0,0,0,0],
       // Fuente: tabla margen_historico (Supabase), columna volumen_descarga_tm. Ene–Ago cerrado; Set–Dic aún sin dato.
-      vdesc:     [20000,1204,42561,37197,32872,37433,41138,48447,0,0,0,0]
+      vdesc:     [20000,1204,42561,37197,32872,37433,41138,48447,0,0,0,0],
+      // Desglose de Precio Importado (Set–Dic, modo manual): Precio Importado = MP + Prima + Demurrage + Procura + Ley.
+      impMp:      [0,0,0,0,0,0,0,0,0,0,0,0],
+      impPrima:   [0,0,0,0,0,0,0,0,0,0,0,0],
+      impDem:     [0,0,0,0,0,0,0,0,0,0,0,0],
+      impProcura: [0,0,0,0,0,0,0,0,0,0,0,0],
+      impLey:     [0,0,0,0,0,0,0,0,0,0,0,0],
+      // Desglose de Precio Referencia (Set–Dic): Precio Referencia = MB mes + Prima Plus.
+      refMb:      [0,0,0,0,0,0,0,0,0,0,0,0],
+      refPrima:   [0,0,0,0,0,0,0,0,0,0,0,0]
     },
     comp: [
       {nombre:"BW",             fecha:"2026-01-09", tms:5003,     plus:132.75, buque:116.8},
@@ -504,6 +514,9 @@ window.addEventListener("error", function(e){
         d.importado = numArr(h.importado, d.importado); d.margenUS = numArr(h.margenUS, d.margenUS, true);
         d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab); d.desp = numArr(h.desp, d.desp);
         d.vdesc = numArr(h.vdesc, d.vdesc);
+        d.impMp = numArr(h.impMp, d.impMp); d.impPrima = numArr(h.impPrima, d.impPrima);
+        d.impDem = numArr(h.impDem, d.impDem); d.impProcura = numArr(h.impProcura, d.impProcura); d.impLey = numArr(h.impLey, d.impLey);
+        d.refMb = numArr(h.refMb, d.refMb); d.refPrima = numArr(h.refPrima, d.refPrima);
       }
       if (Array.isArray(saved.comp)) st.comp = saved.comp.filter(function(d){ return d && typeof d === "object"; });
       if (Array.isArray(saved.rad)) st.rad = saved.rad;
@@ -621,7 +634,7 @@ window.addEventListener("error", function(e){
     {idx:11, name:"Diciembre"}
   ];
   var simCols = document.getElementById("simCols");
-  var refVol = avgOf(state.hist.volumen), refPpc = avgOf(state.hist.ppc), refImp = avgOf(state.hist.importado);
+  var refVol = avgOf(state.hist.volumen);
   // Precio Referencia (CFR Pluspetrol) — promedios de referencia calculados al 16/09/2026 sobre la serie diaria
   var refPpcMes = 157.34, refPpc3m = 184.49, refPpcAnio = 153.33;
 
@@ -649,9 +662,12 @@ window.addEventListener("error", function(e){
     if (!s || !Array.isArray(s.items)) s = state.ships[idx] = {n: (s && s.n) || 0, items: []};
     while (s.items.length < MAX_SHIPS) s.items.push({prov:"Geogas", cap:0, manual:0});
     s.items.forEach(function(it){
-      ["dem","procura","otros"].forEach(function(c){
+      ["dem","procura"].forEach(function(c){
         if (typeof it[c] !== "number") it[c] = (s.costs && s.costs[c]) || 0;   // migra el formato anterior (gastos por mes)
       });
+      if (typeof it.mp !== "number") it.mp = 0;                                          // nuevo: Precio materia prima (MP)
+      if (typeof it.ley !== "number") it.ley = (typeof it.otros === "number") ? it.otros : 0;   // "Otros gastos" pasa a llamarse "Ley"
+      delete it.otros;
     });
     delete s.costs;
     return s;
@@ -681,35 +697,57 @@ window.addEventListener("error", function(e){
     if (it.manual > 0) return {v: it.manual, txt: "fijada a mano"};
     return autoPrima(it);
   }
-  // Prima total del buque = prima base (contrato / histórico) + demurrage + procura + otros gastos
+  // Prima total del buque = Precio materia prima (MP) + Prima (contrato / histórico) + Demurrage + Procura + Ley
   function shipCalc(it){
-    var p = primaFor(it), extra = (it.dem || 0) + (it.procura || 0) + (it.otros || 0);
+    var p = primaFor(it), extra = (it.mp || 0) + (it.dem || 0) + (it.procura || 0) + (it.ley || 0);
     return {p: p, extra: extra, total: p ? p.v + extra : null};
   }
 
   var simHtml = "";
   projMonths.forEach(function(pm){
-    var v = state.hist.volumen[pm.idx] || "";
-    var p = state.hist.ppc[pm.idx] || "";
-    var im = state.hist.importado[pm.idx] || "";
+    var i = pm.idx, h = state.hist;
+    var v = h.volumen[i] || "";
+    var p = h.ppc[i] || "", im = h.importado[i] || "";
+    var mp = h.impMp[i] || "", prima = h.impPrima[i] || "", dem = h.impDem[i] || "", procura = h.impProcura[i] || "", ley = h.impLey[i] || "";
+    var mb = h.refMb[i] || "", primaPlus = h.refPrima[i] || "";
     simHtml +=
       "<div class='simcol'><div class='monthhead'><h3>"+pm.name+"</h3>" +
-      "<button type='button' class='shipbtn' data-open='"+pm.idx+"' id='shipBtn"+pm.idx+"' title='Configurar buques' aria-label='Configurar buques de "+pm.name+"'>🚢</button></div>" +
-      "<div class='ref shipsum' id='shipSum"+pm.idx+"'>Manual</div>" +
+      "<button type='button' class='shipbtn' data-open='"+i+"' id='shipBtn"+i+"' title='Configurar buques' aria-label='Configurar buques de "+pm.name+"'>🚢</button></div>" +
+      "<div class='ref shipsum' id='shipSum"+i+"'>Manual</div>" +
       "<div class='field'><label>Volumen proyectado (TM)</label>" +
-      "<input type='number' id='projVol"+pm.idx+"' value='"+v+"' placeholder='"+Math.round(refVol)+"'></div>" +
+      "<input type='number' id='projVol"+i+"' value='"+v+"' placeholder='"+Math.round(refVol)+"'></div>" +
       "<div class='field'><label>Despacho Terminal proyectado (TM)</label>" +
-      "<input type='number' id='projDesp"+pm.idx+"' value='"+((state.hist.desp && state.hist.desp[pm.idx]) || "")+"' placeholder='0'></div>" +
-      "<div class='field'><label>Precio Importado (US$/TM)</label>" +
-      "<input type='number' id='projImp"+pm.idx+"' value='"+im+"' placeholder='"+refImp.toFixed(1)+"'></div>" +
-      "<div class='field'><label>Precio Referencia (US$/TM)</label>" +
-      "<input type='number' id='projPpc"+pm.idx+"' value='"+p+"' placeholder='"+refPpc.toFixed(1)+"'></div>" +
+      "<input type='number' id='projDesp"+i+"' value='"+((h.desp && h.desp[i]) || "")+"' placeholder='0'></div>" +
+      "<div class='fieldgrp'>" +
+      "<div class='field'><label>Precio materia prima MP (US$/TM)</label><input type='number' step='0.01' id='projImpMp"+i+"' value='"+mp+"' placeholder='0'></div>" +
+      "<div class='field'><label>Prima (US$/TM)</label><input type='number' step='0.01' id='projImpPrima"+i+"' value='"+prima+"' placeholder='0'></div>" +
+      "<div class='field'><label>Demurrage (US$/TM)</label><input type='number' step='0.01' id='projImpDem"+i+"' value='"+dem+"' placeholder='0'></div>" +
+      "<div class='field'><label>Procura (US$/TM)</label><input type='number' step='0.01' id='projImpProcura"+i+"' value='"+procura+"' placeholder='0'></div>" +
+      "<div class='field'><label>Ley (US$/TM)</label><input type='number' step='0.01' id='projImpLey"+i+"' value='"+ley+"' placeholder='0'></div>" +
+      "<div class='field'><label>Precio Importado (US$/TM)</label><input type='number' id='projImp"+i+"' value='"+im+"' readonly></div>" +
+      "</div>" +
+      "<div class='fieldgrp'>" +
+      "<div class='field'><label>MB mes (US$/TM)</label><input type='number' step='0.01' id='projRefMb"+i+"' value='"+mb+"' placeholder='0'></div>" +
+      "<div class='field'><label>Prima Plus (US$/TM)</label><input type='number' step='0.01' id='projRefPrima"+i+"' value='"+primaPlus+"' placeholder='0'></div>" +
+      "<div class='field'><label>Precio Referencia (US$/TM)</label><input type='number' id='projPpc"+i+"' value='"+p+"' readonly></div>" +
+      "</div>" +
       "<div class='ref refppc'>Últ. mes: <b>"+refPpcMes.toFixed(1)+"</b> · Últ. 3m: <b>"+refPpc3m.toFixed(1)+"</b> · Últ. año: <b>"+refPpcAnio.toFixed(1)+"</b></div>" +
       "<div class='field'><label>RAD (US$/TM)</label>" +
-      "<input type='number' step='0.01' id='projRad"+pm.idx+"' value='"+state.hist.rad[pm.idx]+"'></div>" +
+      "<input type='number' step='0.01' id='projRad"+i+"' value='"+h.rad[i]+"'></div>" +
       "</div>";
   });
   simCols.innerHTML = simHtml;
+
+  // Precio Importado = MP + Prima + Demurrage + Procura + Ley (solo modo manual) · Precio Referencia = MB mes + Prima Plus
+  function recalcProjTotals(idx){
+    var g = function(id){ var v = parseFloat(document.getElementById(id + idx).value); return isNaN(v) ? 0 : v; };
+    if (getShips(idx).n === 0){
+      var imp = g("projImpMp") + g("projImpPrima") + g("projImpDem") + g("projImpProcura") + g("projImpLey");
+      document.getElementById("projImp" + idx).value = Math.round(imp * 100) / 100;
+    }
+    var ref = g("projRefMb") + g("projRefPrima");
+    document.getElementById("projPpc" + idx).value = Math.round(ref * 100) / 100;
+  }
 
   // ---- Ventana emergente: buques del mes ----
   var dlg = document.createElement("dialog");
@@ -736,10 +774,11 @@ window.addEventListener("error", function(e){
       h += "<div class='shipcard'><h4>Buque "+(k+1)+"</h4><div class='shipgrid'>" +
         dlgField("Proveedor", "<select data-f='prov'"+at+">"+provOptions+"</select>") +
         dlgField("Capacidad (TM)", "<input type='number' data-f='cap'"+at+" value='"+(it.cap||"")+"' placeholder='0'>") +
-        dlgField("Prima base (US$/TM)", "<input type='number' step='0.01' data-f='manual'"+at+" value='"+(it.manual||"")+"' placeholder='Automática'>") +
+        dlgField("Precio materia prima MP (US$/TM)", "<input type='number' step='0.01' data-f='mp'"+at+" value='"+(it.mp||"")+"' placeholder='0'>") +
+        dlgField("Prima (US$/TM)", "<input type='number' step='0.01' data-f='manual'"+at+" value='"+(it.manual||"")+"' placeholder='Automática'>") +
         dlgField("Demurrage estimado (US$/TM)", "<input type='number' step='0.01' data-f='dem'"+at+" value='"+(it.dem||"")+"' placeholder='0'>") +
         dlgField("Procura (US$/TM)", "<input type='number' step='0.01' data-f='procura'"+at+" value='"+(it.procura||"")+"' placeholder='0'>") +
-        dlgField("Otros gastos (US$/TM)", "<input type='number' step='0.01' data-f='otros'"+at+" value='"+(it.otros||"")+"' placeholder='0'>") +
+        dlgField("Ley (US$/TM)", "<input type='number' step='0.01' data-f='ley'"+at+" value='"+(it.ley||"")+"' placeholder='0'>") +
         "</div><div class='ref' id='dlgRef"+k+"'></div></div>";
     }
     document.getElementById("dlgShips").innerHTML = h;
@@ -761,6 +800,10 @@ window.addEventListener("error", function(e){
     var prima = vol ? w / vol : 0;
     var volEl = document.getElementById("projVol"+idx), impEl = document.getElementById("projImp"+idx);
     volEl.readOnly = impEl.readOnly = s.n > 0;
+    ["projImpMp","projImpPrima","projImpDem","projImpProcura","projImpLey"].forEach(function(pfx){
+      var el = document.getElementById(pfx+idx);
+      if (el) el.readOnly = s.n > 0;
+    });
     if (s.n > 0){
       volEl.value = vol || "";
       impEl.value = vol ? Math.round(prima * 100) / 100 : "";
@@ -777,8 +820,8 @@ window.addEventListener("error", function(e){
         var cj = calcs[j], auto = autoPrima(s.items[j]);
         dlg.querySelector("input[data-f='manual'][data-k='"+j+"']").placeholder = auto ? "Auto: " + fmt(auto.v,{dec:2}) : "Ingresa la prima";
         document.getElementById("dlgRef"+j).textContent = cj.p
-          ? "Base " + fmt(cj.p.v,{dec:2}) + " (" + cj.p.txt + (s.items[j].manual > 0 && auto ? "; automática " + fmt(auto.v,{dec:2}) : "") + ") + gastos " + fmt(cj.extra,{dec:2}) + " = Prima total " + fmt(cj.total,{dec:2}) + " US$/TM"
-          : (s.items[j].prov === "__otro" ? "Ingresa la prima base" : "Sin histórico para este proveedor: ingresa la prima base");
+          ? "Prima " + fmt(cj.p.v,{dec:2}) + " (" + cj.p.txt + (s.items[j].manual > 0 && auto ? "; automática " + fmt(auto.v,{dec:2}) : "") + ") + MP/Demurrage/Procura/Ley " + fmt(cj.extra,{dec:2}) + " = Prima total " + fmt(cj.total,{dec:2}) + " US$/TM"
+          : (s.items[j].prov === "__otro" ? "Ingresa la prima" : "Sin histórico para este proveedor: ingresa la prima");
       }
       document.getElementById("dlgSum").textContent = s.n && vol
         ? "Volumen del mes: " + fmt(vol) + " TM · Prima total ponderada: " + fmt(prima,{dec:2}) + " US$/TM" : "";
@@ -856,7 +899,11 @@ window.addEventListener("error", function(e){
     confirmingSave = false;
     showSimResult();
   });
-  simCols.addEventListener("input", function(){ simDirty = true; });   // hay una simulación a medio escribir: no la pisa la actualización compartida
+  simCols.addEventListener("input", function(e){
+    simDirty = true;   // hay una simulación a medio escribir: no la pisa la actualización compartida
+    var m = /^(projImpMp|projImpPrima|projImpDem|projImpProcura|projImpLey|projRefMb|projRefPrima)(\d+)$/.exec(e.target.id || "");
+    if (m) recalcProjTotals(parseInt(m[2], 10));
+  });
 
   // ---------- COMPARACIÓN DE PROVEEDORES (solo lectura, dentro de Proyección; mismo contenido que la hoja del Excel) ----------
   function compSorted(){
@@ -902,9 +949,9 @@ window.addEventListener("error", function(e){
       months.push({name: pm.name, idx: i, n: s.n, c: c});
       for (var k=0;k<s.n;k++){
         var it = s.items[k], sc = shipCalc(it);
-        ships.push({mes: pm.name, k: k + 1, prov: provLabel(it.prov), cap: it.cap || 0,
+        ships.push({mes: pm.name, k: k + 1, prov: provLabel(it.prov), cap: it.cap || 0, mp: it.mp || 0,
           base: sc.p ? sc.p.v : null, fuente: sc.p ? sc.p.txt : "sin prima",
-          dem: it.dem || 0, procura: it.procura || 0, otros: it.otros || 0, total: sc.total});
+          dem: it.dem || 0, procura: it.procura || 0, ley: it.ley || 0, total: sc.total});
       }
     });
     return {months: months, ships: ships};
@@ -919,7 +966,10 @@ window.addEventListener("error", function(e){
       var i = pm.idx;
       var num = function(id, fallback){ var v = parseFloat(document.getElementById(id + i).value); return isNaN(v) ? fallback : v; };
       dh.volumen[i] = num("projVol", 0);
+      dh.impMp[i] = num("projImpMp", 0); dh.impPrima[i] = num("projImpPrima", 0); dh.impDem[i] = num("projImpDem", 0);
+      dh.impProcura[i] = num("projImpProcura", 0); dh.impLey[i] = num("projImpLey", 0);
       dh.importado[i] = num("projImp", 0);
+      dh.refMb[i] = num("projRefMb", 0); dh.refPrima[i] = num("projRefPrima", 0);
       dh.ppc[i] = num("projPpc", 0);
       dh.desp[i] = num("projDesp", 0);   // cabotaje (dh.cab) ya no se proyecta desde aquí; queda como estaba (usado por DELTA VS 40)
       dh.rad[i] = num("projRad", state.hist.rad[i]);
@@ -935,10 +985,10 @@ window.addEventListener("error", function(e){
 
   function shipsTableHtml(ships){
     if (!ships.length) return "";
-    var h = "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Buque</th><th>Proveedor</th><th>Capacidad (TM)</th><th>Prima base</th><th>Demurrage</th><th>Procura</th><th>Otros</th><th>Prima total</th></tr></thead><tbody>";
+    var h = "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Buque</th><th>Proveedor</th><th>Capacidad (TM)</th><th>MP</th><th>Prima</th><th>Demurrage</th><th>Procura</th><th>Ley</th><th>Prima total</th></tr></thead><tbody>";
     ships.forEach(function(s){
-      h += "<tr><td>" + esc(s.mes) + "</td><td>" + s.k + "</td><td>" + esc(s.prov) + "</td><td>" + fmt(s.cap) + "</td><td>" + (s.base === null ? "—" : fmt(s.base,{dec:2})) +
-        "</td><td>" + fmt(s.dem,{dec:2}) + "</td><td>" + fmt(s.procura,{dec:2}) + "</td><td>" + fmt(s.otros,{dec:2}) + "</td><td>" + (s.total === null ? "—" : fmt(s.total,{dec:2})) + "</td></tr>";
+      h += "<tr><td>" + esc(s.mes) + "</td><td>" + s.k + "</td><td>" + esc(s.prov) + "</td><td>" + fmt(s.cap) + "</td><td>" + fmt(s.mp,{dec:2}) + "</td><td>" + (s.base === null ? "—" : fmt(s.base,{dec:2})) +
+        "</td><td>" + fmt(s.dem,{dec:2}) + "</td><td>" + fmt(s.procura,{dec:2}) + "</td><td>" + fmt(s.ley,{dec:2}) + "</td><td>" + (s.total === null ? "—" : fmt(s.total,{dec:2})) + "</td></tr>";
     });
     return h + "</tbody></table></div>";
   }
@@ -1171,16 +1221,16 @@ window.addEventListener("error", function(e){
     rows.push([cell("Total", X_TXT), F("SUM(B" + first + ":B" + last + ")", tt, X_TINT), "", "", "", F("SUM(F" + first + ":F" + last + ")", r2(tu), X_TINT)]);
 
     // Detalle de los buques simulados
-    var det = [["Mes","Buque","Proveedor","Capacidad (TM)","Prima base (US$/TM)","Fuente de la prima","Demurrage (US$/TM)","Procura (US$/TM)","Otros gastos (US$/TM)","Prima total (US$/TM)"].map(H)];
+    var det = [["Mes","Buque","Proveedor","Capacidad (TM)","Precio materia prima MP (US$/TM)","Prima (US$/TM)","Fuente de la prima","Demurrage (US$/TM)","Procura (US$/TM)","Ley (US$/TM)","Prima total (US$/TM)"].map(H)];
     shipList.forEach(function(s){
-      det.push([s.mes, cell(s.k), s.prov, cell(s.cap, X_INT), s.base === null ? "" : cell(r2(s.base), X_DEC), s.fuente,
-        cell(r2(s.dem), X_DEC), cell(r2(s.procura), X_DEC), cell(r2(s.otros), X_DEC), s.total === null ? "" : cell(r2(s.total), X_DEC)]);
+      det.push([s.mes, cell(s.k), s.prov, cell(s.cap, X_INT), cell(r2(s.mp || 0), X_DEC), s.base === null ? "" : cell(r2(s.base), X_DEC), s.fuente,
+        cell(r2(s.dem), X_DEC), cell(r2(s.procura), X_DEC), cell(r2(s.ley || 0), X_DEC), s.total === null ? "" : cell(r2(s.total), X_DEC)]);
     });
     if (!shipList.length) det.push(["Sin buques configurados (meses en modo manual)"]);
 
     return [
       {name: "Margen Importacion", widths: [28,12,12,12,12,12,12,12,12,12,12,12,12,14], rows: rows},
-      {name: "Detalle buques", widths: [14,8,18,16,20,34,20,18,20,20], rows: det}
+      {name: "Detalle buques", widths: [14,8,18,16,20,16,34,20,18,20,20], rows: det}
     ];
   }
 
@@ -1251,6 +1301,9 @@ window.addEventListener("error", function(e){
       d.tc = numArr(h.tc, d.tc); d.volumen = numArr(h.volumen, d.volumen);
       d.margenUS = numArr(h.margenUS, d.margenUS, true);
       d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab);
+      d.impMp = numArr(h.impMp, d.impMp); d.impPrima = numArr(h.impPrima, d.impPrima);
+      d.impDem = numArr(h.impDem, d.impDem); d.impProcura = numArr(h.impProcura, d.impProcura); d.impLey = numArr(h.impLey, d.impLey);
+      d.refMb = numArr(h.refMb, d.refMb); d.refPrima = numArr(h.refPrima, d.refPrima);
     }
     if (!paramTimer){   // si hay un parámetro propio pendiente de guardar, no se pisa
       if (typeof datos.contratoGeogas === "number"){
@@ -1270,7 +1323,12 @@ window.addEventListener("error", function(e){
     projMonths.forEach(function(pm){
       var i = pm.idx, h = state.hist;
       var set = function(id, v){ document.getElementById(id + i).value = v ? v : ""; };
-      if (getShips(i).n === 0){ set("projVol", h.volumen[i]); set("projImp", h.importado[i]); }
+      if (getShips(i).n === 0){
+        set("projVol", h.volumen[i]); set("projImp", h.importado[i]);
+        set("projImpMp", h.impMp[i]); set("projImpPrima", h.impPrima[i]); set("projImpDem", h.impDem[i]);
+        set("projImpProcura", h.impProcura[i]); set("projImpLey", h.impLey[i]);
+      }
+      set("projRefMb", h.refMb[i]); set("projRefPrima", h.refPrima[i]);
       set("projPpc", h.ppc[i]); set("projDesp", h.desp[i]);
       document.getElementById("projRad" + i).value = h.rad[i];
       updateShips(i);
