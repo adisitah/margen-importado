@@ -580,7 +580,7 @@ window.addEventListener("error", function(e){
     var fixedM = h.margenUS[i];
     var mUS = (fixedM !== null && fixedM !== undefined) ? fixedM : mu * consumido;            // Margen del importado US$ (fijo en la planilla o calculado sobre el volumen consumido)
     return {vol: vol, consumido: consumido, ppc: ppc, imp: imp, tc: tc, rad: rad, cab: cab, desp: desp, vdesc: vdesc, mu: mu, mUS: mUS, soles: mUS * tc,
-      mc: rad * cab, mDesp: rad * desp, dl: (rad - 40) * cab, dt: (rad - 40) * (vol + cab)};
+      mc: rad * cab, mDesp: rad * desp, mAbast: mUS + rad * desp, dl: (rad - 40) * cab, dt: (rad - 40) * (vol + cab)};
 }
 
   // Filas: input = editable en Set–Dic (cerrado en Ene–Ago) · calc = se recalcula · total = suma en la última columna
@@ -596,7 +596,8 @@ window.addEventListener("error", function(e){
     {k: "fee",       label: "Margen del Terminal",         type: "section"},
     {k: "rad",       label: "RAD (US$/TM)",                type: "input", dec: 0},
     {k: "desp",      label: "Despacho Terminal (miles TM)", type: "input", dec: 1, zero: true, total: "desp", scale: 1000},
-    {k: "mDesp",     label: "Margen Despacho Terminal (miles US$)", type: "calc",  dec: 0, scale: 1000}
+    {k: "mDesp",     label: "Margen Terminal (miles US$)", type: "calc",  dec: 0, total: "mDesp", scale: 1000},
+    {k: "mAbast",    label: "Margen Abastecimiento (miles US$)", type: "calc",  dec: 0, total: "mAbast", scale: 1000}
   ];
 
   function buildHistTable(){
@@ -625,10 +626,10 @@ window.addEventListener("error", function(e){
   }
 
   function recalcHist(){
-    var sums = {vol: 0, consumido: 0, mUS: 0, soles: 0, cab: 0, desp: 0, vdesc: 0, dt: 0};
+    var sums = {vol: 0, consumido: 0, mUS: 0, soles: 0, cab: 0, desp: 0, vdesc: 0, dt: 0, mDesp: 0, mAbast: 0};
     for (var i=0;i<12;i++){
       var c = histCalc(i), pc = i >= 8 ? " projcell" : "";
-      sums.vol += c.vol; sums.consumido += c.consumido; sums.mUS += c.mUS; sums.soles += c.soles; sums.cab += c.cab; sums.desp += c.desp; sums.vdesc += c.vdesc; sums.dt += c.dt;
+      sums.vol += c.vol; sums.consumido += c.consumido; sums.mUS += c.mUS; sums.soles += c.soles; sums.cab += c.cab; sums.desp += c.desp; sums.vdesc += c.vdesc; sums.dt += c.dt; sums.mDesp += c.mDesp; sums.mAbast += c.mAbast;
       HROWS.forEach(function(r){
         if (r.type !== "calc") return;
         var el = document.getElementById("h_" + r.k + "_" + i);
