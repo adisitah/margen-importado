@@ -463,6 +463,8 @@ window.addEventListener("error", function(e){
       // Fuente: tabla margen_historico (Supabase), columna volumen_descarga_tm. Ene–Ago cerrado; Set–Dic aún sin dato.
       vdesc:     [20000,1204,42561,37197,32872,37433,41138,48447,0,0,0,0],
       // Desglose de Precio Importado (Set–Dic, modo manual): Precio Importado = MP + Prima + Demurrage + Procura + Ley.
+      // Fuente: margen_historico.sobrecostos_terminal_us (US$ reales). Sin dato = 0.
+      sobre:      [0,0,0,0,0,0,0,0,0,0,0,0],
       impMp:      [0,0,0,0,0,0,0,0,0,0,0,0],
       impPrima:   [0,0,0,0,0,0,0,0,0,0,0,0],
       impDem:     [0,0,0,0,0,0,0,0,0,0,0,0],
@@ -536,7 +538,7 @@ window.addEventListener("error", function(e){
         d.tc = numArr(h.tc, d.tc); d.volumen = numArr(h.volumen, d.volumen); d.ppc = numArr(h.ppc, d.ppc);
         d.importado = numArr(h.importado, d.importado); d.margenUS = numArr(h.margenUS, d.margenUS, true);
         d.rad = numArr(h.rad, d.rad); d.cab = numArr(h.cab, d.cab); d.desp = numArr(h.desp, d.desp);
-        d.vdesc = numArr(h.vdesc, d.vdesc);
+        d.vdesc = numArr(h.vdesc, d.vdesc); d.sobre = numArr(h.sobre, d.sobre);
         d.impMp = numArr(h.impMp, d.impMp); d.impPrima = numArr(h.impPrima, d.impPrima);
         d.impDem = numArr(h.impDem, d.impDem); d.impProcura = numArr(h.impProcura, d.impProcura); d.impLey = numArr(h.impLey, d.impLey);
         d.refMb = numArr(h.refMb, d.refMb); d.refPrima = numArr(h.refPrima, d.refPrima);
@@ -574,12 +576,12 @@ window.addEventListener("error", function(e){
   function histCalc(i, h){
     h = h || state.hist;
     var vol = h.volumen[i] || 0, ppc = h.ppc[i] || 0, imp = h.importado[i] || 0, tc = h.tc[i] || 0, rad = h.rad[i] || 0, cab = h.cab[i] || 0, desp = (h.desp && h.desp[i]) || 0;
-    var vdesc = (h.vdesc && h.vdesc[i]) || 0;
+    var vdesc = (h.vdesc && h.vdesc[i]) || 0, sobre = (h.sobre && h.sobre[i]) || 0;
     var consumido = vol;                                                                     // Volumen Importado consumido (por ahora, igual al Volumen importado)
     var mu = (ppc === 0 && imp === 0) ? 0 : ppc - imp;                                       // Margen unitario
     var fixedM = h.margenUS[i];
     var mUS = (fixedM !== null && fixedM !== undefined) ? fixedM : mu * consumido;            // Margen del importado US$ (fijo en la planilla o calculado sobre el volumen consumido)
-    return {vol: vol, consumido: consumido, ppc: ppc, imp: imp, tc: tc, rad: rad, cab: cab, desp: desp, vdesc: vdesc, mu: mu, mUS: mUS, soles: mUS * tc,
+    return {vol: vol, consumido: consumido, ppc: ppc, imp: imp, tc: tc, rad: rad, cab: cab, desp: desp, vdesc: vdesc, sobre: sobre, mu: mu, mUS: mUS, soles: mUS * tc,
       mc: rad * cab, mDesp: rad * desp, mAbast: mUS + rad * desp, dl: (rad - 40) * cab, dt: (rad - 40) * (vol + cab)};
 }
 
@@ -596,6 +598,7 @@ window.addEventListener("error", function(e){
     {k: "fee",       label: "Margen del Terminal",         type: "section"},
     {k: "rad",       label: "RAD (US$/TM)",                type: "input", dec: 0},
     {k: "desp",      label: "Despacho Terminal (miles TM)", type: "input", dec: 1, zero: true, total: "desp", scale: 1000},
+    {k: "sobre",     label: "Sobrecostos Terminal (miles US$)", type: "input", dec: 0, zero: true, total: "sobre", scale: 1000},
     {k: "mDesp",     label: "Margen Terminal (miles US$)", type: "calc",  dec: 0, total: "mDesp", scale: 1000},
     {k: "mAbast",    label: "Margen Abastecimiento (miles US$)", type: "calc",  dec: 0, total: "mAbast", scale: 1000}
   ];
@@ -626,10 +629,10 @@ window.addEventListener("error", function(e){
   }
 
   function recalcHist(){
-    var sums = {vol: 0, consumido: 0, mUS: 0, soles: 0, cab: 0, desp: 0, vdesc: 0, dt: 0, mDesp: 0, mAbast: 0};
+    var sums = {vol: 0, consumido: 0, mUS: 0, soles: 0, cab: 0, desp: 0, vdesc: 0, dt: 0, mDesp: 0, mAbast: 0, sobre: 0};
     for (var i=0;i<12;i++){
       var c = histCalc(i), pc = i >= 8 ? " projcell" : "";
-      sums.vol += c.vol; sums.consumido += c.consumido; sums.mUS += c.mUS; sums.soles += c.soles; sums.cab += c.cab; sums.desp += c.desp; sums.vdesc += c.vdesc; sums.dt += c.dt; sums.mDesp += c.mDesp; sums.mAbast += c.mAbast;
+      sums.vol += c.vol; sums.consumido += c.consumido; sums.mUS += c.mUS; sums.soles += c.soles; sums.cab += c.cab; sums.desp += c.desp; sums.vdesc += c.vdesc; sums.dt += c.dt; sums.mDesp += c.mDesp; sums.sobre += c.sobre; sums.mAbast += c.mAbast;
       HROWS.forEach(function(r){
         if (r.type !== "calc") return;
         var el = document.getElementById("h_" + r.k + "_" + i);
@@ -1315,6 +1318,7 @@ window.addEventListener("error", function(e){
   }
   // Empuja Precio Referencia/Importado, Despacho Terminal y Volumen Descarga (y sus derivados) de los 12 meses
   // a margen_historico, para que esa tabla quede siempre igual a la proyección vigente. No toca las demás columnas.
+  var sobreColExists = false;   // true cuando margen_historico ya tiene la columna sobrecostos_terminal_us
   function syncHistoricoPrecios(){
     var h = state.hist, rows = [];
     for (var i = 0; i < 12; i++){
@@ -1323,6 +1327,7 @@ window.addEventListener("error", function(e){
       var mu = Math.round((pr - pi) * 100) / 100;
       rows.push({mes: mes, precio_referencia: pr, precio_importado: pi, margen_unitario: mu, margen_importado_us: Math.round(mu * vol),
         despacho_terminal_tm: desp, margen_despacho_terminal_us: Math.round(rad * desp), volumen_descarga_tm: (h.vdesc && h.vdesc[i]) || 0});
+      if (sobreColExists) rows[rows.length - 1].sobrecostos_terminal_us = (h.sobre && h.sobre[i]) || 0;
     }
     return fetch(SB.url + "/rest/v1/margen_historico?on_conflict=mes", {
       method: "POST",
@@ -1413,13 +1418,14 @@ window.addEventListener("error", function(e){
       if (typeof row.precio_importado === "number") state.hist.importado[i] = row.precio_importado;
       if (typeof row.despacho_terminal_tm === "number") state.hist.desp[i] = row.despacho_terminal_tm;
       if (typeof row.volumen_descarga_tm === "number") state.hist.vdesc[i] = row.volumen_descarga_tm;
+      if ("sobrecostos_terminal_us" in row){ sobreColExists = true; if (typeof row.sobrecostos_terminal_us === "number") state.hist.sobre[i] = row.sobrecostos_terminal_us; }
     });
     buildHistTable(); recalcHist(); renderKpis();
     if (!simDirty) fillSimInputs();
     persist();
   }
   function loadHistoricoPrecios(){
-    return fetch(SB.url + "/rest/v1/margen_historico?select=mes,precio_referencia,precio_importado,despacho_terminal_tm,volumen_descarga_tm&order=mes", {headers: sbHeaders({Accept: "application/json"})})
+    return fetch(SB.url + "/rest/v1/margen_historico?select=*&order=mes", {headers: sbHeaders({Accept: "application/json"})})
       .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(applyHistoricoPrecios)
       .catch(function(e){ if (window.console) console.warn("margen_historico (precios):", e.message); });
@@ -1494,7 +1500,7 @@ window.addEventListener("error", function(e){
   // ---------- DATA HISTÓRICA (Supabase, tabla margen_historico) — independiente de state.hist; solo se activa al abrir la pestaña ----------
   var HDB_TABLE = "margen_historico";
   var hdbRows = null, hdbSaveTimers = {}, hdbLoaded = false;
-  var hdbCols = ["tipo_cambio", "volumen_tm", "precio_referencia", "precio_importado", "rad", "cabotaje_tm", "despacho_terminal_tm", "volumen_descarga_tm"];
+  var hdbCols = ["tipo_cambio", "volumen_tm", "precio_referencia", "precio_importado", "rad", "cabotaje_tm", "despacho_terminal_tm", "volumen_descarga_tm", "sobrecostos_terminal_us"];
   var hdbScale = {volumen_descarga_tm: 1000};   // se guarda en TM reales; se muestra y edita en miles de TM
 
   function hdbSetStatus(state, text){
@@ -1525,6 +1531,12 @@ window.addEventListener("error", function(e){
       var th = document.createElement("th"); th.className = "hdb-descarga"; th.textContent = "Vol. Descarga (miles TM)";
       document.querySelector("#histdbTable thead tr").appendChild(th);
     }
+    var tieneSobre = hdbRows.some(function(r){ return "sobrecostos_terminal_us" in r; });
+    document.querySelectorAll("#histdbTable thead .hdb-sobre").forEach(function(el){ el.remove(); });
+    if (tieneSobre){
+      var th2 = document.createElement("th"); th2.className = "hdb-sobre"; th2.textContent = "Sobrecostos Terminal (US$)";
+      document.querySelector("#histdbTable thead tr").appendChild(th2);
+    }
     hdbRows.forEach(function(r){
       var num = function(field, dec){
         var v = r[field];
@@ -1539,7 +1551,7 @@ window.addEventListener("error", function(e){
         "<td class='calc " + cls(r.margen_importado_us) + "' id='hdbmus_" + r.mes + "'>" + fmt(r.margen_importado_us) + "</td>" +
         num("rad", 2) + num("cabotaje_tm", 1) + num("despacho_terminal_tm", 1) +
         "<td class='calc' id='hdbmdesp_" + r.mes + "'>" + fmt(r.margen_despacho_terminal_us) + "</td>" +
-        (tieneDescarga ? num("volumen_descarga_tm", 1) : "") +
+        (tieneDescarga ? num("volumen_descarga_tm", 1) : "") + (tieneSobre ? num("sobrecostos_terminal_us", 0) : "") +
         "</tr>";
     });
     body.innerHTML = html;
