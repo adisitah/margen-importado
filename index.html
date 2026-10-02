@@ -376,8 +376,8 @@
           <thead>
             <tr>
               <th style="text-align:left">Mes</th><th>Estado</th><th>TC</th><th>Volumen (TM)</th>
-              <th>Precio Referencia</th><th>Precio Importado</th><th>Margen unit.</th>
-              <th>Margen del importado (US$)</th><th>RAD</th><th>Cabotaje (TM)</th>
+              <th>Precio Referencia</th><th>Costo Importado</th><th>Margen unit.</th>
+<th>Margen del importado (US$)</th><th>RAD</th><th>Cabotaje (TM)</th>
               <th>Despacho Terminal (TM)</th><th>Margen Desp. Terminal (US$)</th>
             </tr>
           </thead>
@@ -590,7 +590,7 @@ window.addEventListener("error", function(e){
     {k: "vdesc",     label: "Volumen Descarga (miles TM)", type: "input", dec: 1, zero: true, total: "vdesc", scale: 1000},
     {k: "consumido", label: "Volumen Importado consumido (miles TM)", type: "calc", dec: 1, total: "consumido", scale: 1000},
     {k: "ppc",       label: "Precio Referencia (US$/TM)",  type: "input", dec: 0, zero: true},
-    {k: "importado", label: "Precio Importado (US$/TM)",   type: "input", dec: 0, zero: true},
+    {k: "importado", label: "Costo Importado (US$/TM)",    type: "input", dec: 0, zero: true},
     {k: "mu",        label: "Margen unitario (US$/TM)",    type: "calc",  dec: 1},
     {k: "mUS",       label: "Margen del importado (miles US$)", type: "calc",  dec: 0, total: "mUS", scale: 1000},
     {k: "fee",       label: "Margen del Terminal",         type: "section"},
@@ -746,8 +746,8 @@ window.addEventListener("error", function(e){
       "<input type='number' id='projVol"+i+"' value='"+v+"' placeholder='"+Math.round(refVol)+"'></div>" +
       "<div class='field'><label>Despacho Terminal proyectado (TM)</label>" +
       "<input type='number' id='projDesp"+i+"' value='"+((h.desp && h.desp[i]) || "")+"' placeholder='0'></div>" +
-      "<div class='field'><label>Precio Importado (US$/TM)</label><input type='number' id='projImp"+i+"' value='"+im+"' readonly></div>" +
-      "<details class='pricebreak' id='impBreak"+i+"'><summary>Desglosar Precio Importado (MP + Prima + Demurrage + Procura + Ley)</summary><div class='fieldgrp'>" +
+      "<div class='field'><label>Costo Importado (US$/TM)</label><input type='number' id='projImp"+i+"' value='"+im+"' readonly></div>" +
+      "<details class='pricebreak' id='impBreak"+i+"'><summary>Desglosar Costo Importado (MP + Prima + Demurrage + Procura + Ley)</summary><div class='fieldgrp'>" +
       "<div class='field'><label>Precio materia prima MP (US$/TM)</label><input type='number' step='0.01' id='projImpMp"+i+"' value='"+mp+"' placeholder='0'></div>" +
       "<div class='field'><label>Prima (US$/TM)</label><input type='number' step='0.01' id='projImpPrima"+i+"' value='"+prima+"' placeholder='0'></div>" +
       "<div class='field'><label>Demurrage (US$/TM)</label><input type='number' step='0.01' id='projImpDem"+i+"' value='"+dem+"' placeholder='0'></div>" +
@@ -799,7 +799,7 @@ window.addEventListener("error", function(e){
   }
   function renderDlgShips(idx){
     var s = getShips(idx), h = "";
-    if (!s.n) h = "<p class='dlgnote'>Modo manual: ingresa el volumen y el Precio Importado directamente en la columna del mes.</p>";
+    if (!s.n) h = "<p class='dlgnote'>Modo manual: ingresa el volumen y el Costo Importado directamente en la columna del mes.</p>";
     for (var k=0;k<s.n;k++){
       var it = s.items[k], at = " data-k='"+k+"'";
       h += "<div class='shipcard'><h4>Buque "+(k+1)+"</h4><div class='shipgrid'>" +
@@ -1037,7 +1037,7 @@ window.addEventListener("error", function(e){
     } else {
       var tv = 0, tcab = 0, tm = 0, tdt = 0, tdelta = 0;
       h += "<p class='donesub'>Setiembre–Diciembre · todavía no es la proyección vigente · Δ = diferencia del margen importado frente a la vigente</p>";
-      h += "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Volumen (miles TM)</th><th>Cabotaje Pluspetrol (miles TM)</th><th>Precio Referencia</th><th>Precio Importado</th><th>Margen unit.</th><th>Margen del importado (miles US$)</th><th>DELTA VS 40 total (miles US$)</th><th>Δ vs vigente (miles US$)</th></tr></thead><tbody>";
+      h += "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Volumen (miles TM)</th><th>Cabotaje Pluspetrol (miles TM)</th><th>Precio Referencia</th><th>Costo Importado</th><th>Margen unit.</th><th>Margen del importado (miles US$)</th><th>DELTA VS 40 total (miles US$)</th><th>Δ vs vigente (miles US$)</th></tr></thead><tbody>";
       d.months.forEach(function(m){
         var c = m.c, delta = c.mUS - histCalc(m.idx, state.hist).mUS;
         tv += c.vol; tcab += c.cab; tm += c.mUS; tdt += c.dt; tdelta += delta;
@@ -1203,7 +1203,7 @@ window.addEventListener("error", function(e){
     var L = "BCDEFGHIJKLM";
     function F(f, v, s){ return {f: f, v: v, s: s}; }
     function blankRow(){ var a = []; for (var j = 0; j < 14; j++) a.push(""); return a; }
-    var labels = {5: "Tipo de cambio", 6: "Volumen (TM)", 7: "Precio Referencia (US$/TM)", 8: "Precio Importado (US$/TM)", 9: "Margen unitario US$/TM",
+    var labels = {5: "Tipo de cambio", 6: "Volumen (TM)", 7: "Precio Referencia (US$/TM)", 8: "Costo Importado (US$/TM)", 9: "Margen unitario US$/TM",
       10: "Margen del importado US$", 11: "Total Soles S/", 12: "Margen del Terminal", 13: "RAD (US$/TM)", 14: "Volumen Cabotaje Pluspetrol (TM)",
       15: "Margen Cabotaje Pluspetrol US$", 16: "DELTA VS 40 local", 17: "DELTA VS 40 total"};
     var R = {};
