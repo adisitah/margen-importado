@@ -582,7 +582,7 @@ window.addEventListener("error", function(e){
     var fixedM = h.margenUS[i];
     var mUS = (fixedM !== null && fixedM !== undefined) ? fixedM : mu * consumido;            // Margen del importado US$ (fijo en la planilla o calculado sobre el volumen consumido)
     return {vol: vol, consumido: consumido, ppc: ppc, imp: imp, tc: tc, rad: rad, cab: cab, desp: desp, vdesc: vdesc, sobre: sobre, mu: mu, mUS: mUS, soles: mUS * tc,
-      mc: rad * cab, mDesp: rad * desp, mAbast: mUS + rad * desp, dl: (rad - 40) * cab, dt: (rad - 40) * (vol + cab)};
+      mc: rad * cab, mDesp: rad * desp - sobre, mAbast: mUS + rad * desp - sobre, dl: (rad - 40) * cab, dt: (rad - 40) * (vol + cab)};
 }
 
   // Filas: input = editable en Set–Dic (cerrado en Ene–Ago) · calc = se recalcula · total = suma en la última columna
@@ -1326,7 +1326,7 @@ window.addEventListener("error", function(e){
       var pr = h.ppc[i] || 0, pi = h.importado[i] || 0, vol = h.volumen[i] || 0, rad = h.rad[i] || 0, desp = (h.desp && h.desp[i]) || 0;
       var mu = Math.round((pr - pi) * 100) / 100;
       rows.push({mes: mes, precio_referencia: pr, precio_importado: pi, margen_unitario: mu, margen_importado_us: Math.round(mu * vol),
-        despacho_terminal_tm: desp, margen_despacho_terminal_us: Math.round(rad * desp), volumen_descarga_tm: (h.vdesc && h.vdesc[i]) || 0});
+        despacho_terminal_tm: desp, margen_despacho_terminal_us: Math.round(rad * desp - ((h.sobre && h.sobre[i]) || 0)), volumen_descarga_tm: (h.vdesc && h.vdesc[i]) || 0});
       if (sobreColExists) rows[rows.length - 1].sobrecostos_terminal_us = (h.sobre && h.sobre[i]) || 0;
     }
     return fetch(SB.url + "/rest/v1/margen_historico?on_conflict=mes", {
@@ -1515,7 +1515,7 @@ window.addEventListener("error", function(e){
     var pr = r.precio_referencia || 0, pi = r.precio_importado || 0, vol = r.volumen_tm || 0, rad = r.rad || 0, desp = r.despacho_terminal_tm || 0;
     r.margen_unitario = Math.round((pr - pi) * 100) / 100;
     r.margen_importado_us = Math.round(r.margen_unitario * vol);
-    r.margen_despacho_terminal_us = Math.round(rad * desp);
+    r.margen_despacho_terminal_us = Math.round(rad * desp - (r.sobrecostos_terminal_us || 0));
   }
 
   function hdbMesLabel(mes){
@@ -1603,7 +1603,7 @@ window.addEventListener("error", function(e){
     var v = parseFloat(e.target.value);
     if (isNaN(v)) v = 0;
     r[field] = hdbScale[field] ? v * hdbScale[field] : v;   // los campos en miles se guardan siempre en TM reales
-    if (field === "precio_referencia" || field === "precio_importado" || field === "volumen_tm" || field === "rad" || field === "despacho_terminal_tm") hdbUpdateCalc(mes);
+    if (field === "precio_referencia" || field === "precio_importado" || field === "volumen_tm" || field === "rad" || field === "despacho_terminal_tm" || field === "sobrecostos_terminal_us") hdbUpdateCalc(mes);
     hdbScheduleSave(mes, field);
   });
 
