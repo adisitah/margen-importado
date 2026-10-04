@@ -297,7 +297,7 @@
     <div class="statusbar card" id="statusBar"></div>
     <div class="kpis" id="kpis"></div>
     <div class="card">
-      <h2>Data histórica mensual<span class="legend-lock">🔒 Ene–Ago cerrado</span><span class="legend-proj"><span class="sw"></span>Set–Dic proyectado</span></h2>
+      <h2>Data histórica mensual<span class="legend-lock" id="legendLock">🔒 Ene–Ago cerrado</span><span class="legend-proj"><span class="sw"></span><span id="legendProj">Set–Dic proyectado</span></span></h2>
       <div class="tablewrap">
         <table class="hist mono" id="histTable"></table>
       </div>
@@ -306,7 +306,7 @@
       <summary>Detalle de buques de la proyección vigente</summary>
       <div id="vigShipsBody"></div>
     </details>
-    <footer class="note">Base: planilla margen-importacion-historico.xlsx. Ene–Ago cerrados; Setiembre a Diciembre corresponden a la proyección vigente.</footer>
+    <footer class="note" id="footNote">Base: planilla margen-importacion-historico.xlsx. Ene–Ago cerrados; Setiembre a Diciembre corresponden a la proyección vigente.</footer>
   </section>
 
   <!-- NUEVA SIMULACIÓN -->
@@ -603,9 +603,19 @@ window.addEventListener("error", function(e){
     {k: "mAbast",    label: "Margen Abastecimiento (miles US$)", type: "calc",  dec: 0, total: "mAbast", scale: 1000}
   ];
 
+  // Meses cerrados desde Enero (se lee de margen_historico.cerrado; 8 = Ene–Ago hasta que cargue). Se cambia con el botón "Cerrar mes".
+  var CLOSED = 8;
+  function updateClosedLabels(){
+    var lock = document.getElementById("legendLock"), proj = document.getElementById("legendProj"), foot = document.getElementById("footNote");
+    if (lock) lock.textContent = "🔒 " + (CLOSED > 0 ? "Ene–" + MONTHS_SHORT[CLOSED - 1] + " cerrado" : "Sin meses cerrados");
+    if (proj) proj.textContent = CLOSED < 12 ? MONTHS_SHORT[CLOSED] + "–Dic proyectado" : "Año cerrado";
+    if (foot) foot.textContent = "Base: planilla margen-importacion-historico.xlsx. " + (CLOSED > 0 ? "Ene–" + MONTHS_SHORT[CLOSED - 1] + " cerrados" : "Sin meses cerrados") +
+      (CLOSED < 12 ? "; " + MONTHS[CLOSED] + " a Diciembre corresponden a la proyección vigente." : ".");
+  }
   function buildHistTable(){
+    updateClosedLabels();
     var html = "<thead><tr><th></th>";
-    MONTHS_SHORT.forEach(function(m,i){ html += "<th" + (i>=8?" class='projcell'":"") + ">" + m + "</th>"; });
+    MONTHS_SHORT.forEach(function(m,i){ html += "<th" + (i>=CLOSED?" class='projcell'":"") + ">" + m + "</th>"; });
     html += "<th>Total</th></tr></thead><tbody>";
     HROWS.forEach(function(r){
       if (r.type === "section"){
@@ -614,10 +624,10 @@ window.addEventListener("error", function(e){
       }
       html += "<tr class='row-label" + (r.total ? " total-col" : "") + "'><td>" + r.label + "</td>";
       for (var i=0;i<12;i++){
-        var pc = i >= 8 ? " projcell" : "";
-        if (r.type === "input"){   // solo lectura: Ene–Ago de la planilla, Set–Dic de la última simulación
+        var pc = i >= CLOSED ? " projcell" : "";
+        if (r.type === "input"){   // solo lectura: meses cerrados de la planilla, el resto de la última simulación
           var v = state.hist[r.k][i] / (r.scale || 1);
-          html += "<td class='" + (i < 8 ? "locked" : "projcell") + "'>" + (r.zero ? fmtz(v, r.dec) : fmt(v, {dec: r.dec})) + "</td>";
+          html += "<td class='" + (i < CLOSED ? "locked" : "projcell") + "'>" + (r.zero ? fmtz(v, r.dec) : fmt(v, {dec: r.dec})) + "</td>";
         } else {
           html += "<td class='calc" + pc + "' id='h_" + r.k + "_" + i + "'></td>";
         }
@@ -631,7 +641,7 @@ window.addEventListener("error", function(e){
   function recalcHist(){
     var sums = {vol: 0, consumido: 0, mUS: 0, soles: 0, cab: 0, desp: 0, vdesc: 0, dt: 0, mDesp: 0, mAbast: 0, sobre: 0};
     for (var i=0;i<12;i++){
-      var c = histCalc(i), pc = i >= 8 ? " projcell" : "";
+      var c = histCalc(i), pc = i >= CLOSED ? " projcell" : "";
       sums.vol += c.vol; sums.consumido += c.consumido; sums.mUS += c.mUS; sums.soles += c.soles; sums.cab += c.cab; sums.desp += c.desp; sums.vdesc += c.vdesc; sums.dt += c.dt; sums.mDesp += c.mDesp; sums.sobre += c.sobre; sums.mAbast += c.mAbast;
       HROWS.forEach(function(r){
         if (r.type !== "calc") return;
@@ -1214,12 +1224,12 @@ window.addEventListener("error", function(e){
     for (var n = 5; n <= 17; n++){ R[n] = blankRow(); R[n][0] = (n === 12) ? cell(labels[n], X_TXT) : labels[n]; }
 
     var head = [""];
-    MONTHS.forEach(function(m, i){ head.push(cell(m, i < 8 ? X_MHEADG : X_MHEAD)); });
+    MONTHS.forEach(function(m, i){ head.push(cell(m, i < CLOSED ? X_MHEADG : X_MHEAD)); });
     head.push(H("Total"));
 
     var sv = 0, sm = 0, ss = 0, sc = 0, sdt = 0;
     for (var i = 0; i < 12; i++){
-      var col = L.charAt(i), c = histCalc(i, h), g = i < 8, k = i + 1;
+      var col = L.charAt(i), c = histCalc(i, h), g = i < CLOSED, k = i + 1;
       var sI = g ? X_INTG : X_INT, sD = g ? X_DECG : X_DEC, fixedM = h.margenUS[i];
       R[5][k] = cell(c.tc, sD);
       R[6][k] = cell(c.vol, sI);
@@ -1242,7 +1252,7 @@ window.addEventListener("error", function(e){
     R[17][13] = F("SUM(B17:M17)", r2(sdt), X_TINT);
 
     var rows = [[cell("Margen de Importación GLP — Histórico 2026", X_TXT)],
-      ["Generado desde Margen de Abastecimiento | Calculadora · Ene–Ago cerrado (verde) · Set–Dic proyectado"], [], head];
+      ["Generado desde Margen de Abastecimiento | Calculadora · " + (CLOSED > 0 ? "Ene–" + MONTHS_SHORT[CLOSED - 1] : "Sin meses") + " cerrado (verde)" + (CLOSED < 12 ? " · " + MONTHS_SHORT[CLOSED] + "–Dic proyectado" : "")], [], head];
     for (var r = 5; r <= 17; r++) rows.push(R[r]);
     rows.push([], [], [cell("Comparación de proveedores por transacción", X_TXT)],
       ["Margen unitario = Prima Plus − Prima Buque · Total = Margen unitario × TMs"], []);
@@ -1411,6 +1421,11 @@ window.addEventListener("error", function(e){
   // tabla principal se leen en vivo de ahí (12 meses).
   function applyHistoricoPrecios(rows){
     if (!Array.isArray(rows)) return;
+    if (rows.length > 1 && "cerrado" in rows[0]){   // meses cerrados consecutivos desde Enero
+      var n = 0;
+      while (n < rows.length && rows[n].cerrado === true) n++;
+      CLOSED = n;
+    }
     rows.forEach(function(row){
       var i = parseInt(String(row.mes).split("-")[1], 10) - 1;
       if (i < 0 || i > 11) return;
@@ -1444,7 +1459,7 @@ window.addEventListener("error", function(e){
   function renderKpis(){
     var ytd = {mUS: 0, vol: 0, mDesp: 0, desp: 0}, sd = {mUS: 0, vol: 0, mDesp: 0, desp: 0};
     for (var i = 0; i < 12; i++){
-      var c = histCalc(i), b = (i < 8) ? ytd : sd;
+      var c = histCalc(i), b = (i < CLOSED) ? ytd : sd;
       b.mUS += c.mUS; b.vol += c.vol; b.mDesp += c.mDesp; b.desp += c.desp;
     }
     var card = function(label, v, vol, sub){
@@ -1452,11 +1467,12 @@ window.addEventListener("error", function(e){
       return "<div class='kpi'><div class='kl'>" + label + "</div><div class='kv " + cls(v) + "'>US$ " + fmtK(v) + "</div>" +
         "<div class='ku " + cls(u) + "'>" + fmt(u,{dec:2}) + " US$/TM</div><div class='ks'>" + sub + "</div></div>";
     };
+    var hasta = CLOSED > 0 ? MONTHS[CLOSED - 1] : "—", cierre = "Cerrado" + (CLOSED < 12 ? " + " + MONTHS[CLOSED] + " a Diciembre proyectado" : "");
     document.getElementById("kpis").innerHTML =
-      card("Margen importado YTD Enero–Agosto", ytd.mUS, ytd.vol, "Cerrado") +
-      card("Margen Ene–Dic proyectado", ytd.mUS + sd.mUS, ytd.vol + sd.vol, "Cerrado + Setiembre a Diciembre proyectado") +
+      card("Margen importado YTD Enero–" + hasta, ytd.mUS, ytd.vol, "Cerrado") +
+      card("Margen Ene–Dic proyectado", ytd.mUS + sd.mUS, ytd.vol + sd.vol, cierre) +
       card("Margen YTD Terminal", ytd.mDesp, ytd.desp, "Cerrado") +
-      card("Margen Terminal Ene–Dic proyectado", ytd.mDesp + sd.mDesp, ytd.desp + sd.desp, "Cerrado + Setiembre a Diciembre proyectado");
+      card("Margen Terminal Ene–Dic proyectado", ytd.mDesp + sd.mDesp, ytd.desp + sd.desp, cierre);
   }
 
   // Estado de conexión, fecha de la vigente y detalle de buques
@@ -1506,9 +1522,35 @@ window.addEventListener("error", function(e){
   function hdbSetStatus(state, text){
     document.getElementById("histdbStatus").innerHTML =
       "<div><div class='stt'>Data histórica en Supabase</div><div class='stc'><span class='dot " + state + "'></span>" + text + "</div></div>" +
-      "<div class='statacts'><button type='button' class='addbtn' id='hdbRefresh'>↻ Actualizar</button></div>";
+      "<div class='statacts'>" +
+      (hdbRows && hdbRows.length === 12 && CLOSED < 12 ? "<button type='button' class='addbtn' id='hdbClose' style='border-style:solid;border-color:var(--accent);color:var(--accent-ink);font-weight:600;'>🔒 Cerrar " + MONTHS[CLOSED] + "</button>" : "") +
+      (hdbRows && hdbRows.length === 12 && CLOSED > 0 ? "<button type='button' class='addbtn' id='hdbReopen'>Reabrir " + MONTHS[CLOSED - 1] + "</button>" : "") +
+      "<button type='button' class='addbtn' id='hdbRefresh'>↻ Actualizar</button></div>";
     var b = document.getElementById("hdbRefresh");
     if (b) b.addEventListener("click", function(){ hdbLoad(); });
+    var bc = document.getElementById("hdbClose");
+    if (bc) bc.addEventListener("click", function(){
+      if (confirm("¿Cerrar " + MONTHS[CLOSED] + "? Pasa a ser dato real: queda bloqueado, entra en el margen YTD y se comparte con todos los que abran la página.")) hdbSetClosed(CLOSED + 1);
+    });
+    var br = document.getElementById("hdbReopen");
+    if (br) br.addEventListener("click", function(){
+      if (confirm("¿Reabrir " + MONTHS[CLOSED - 1] + "? Vuelve a ser mes proyectado para todos.")) hdbSetClosed(CLOSED - 1);
+    });
+  }
+
+  // Cierra o reabre meses: marca cerrado = true en los primeros n meses de margen_historico
+  function hdbSetClosed(n){
+    var mes = hdbRows[n > CLOSED ? n - 1 : n].mes, val = n > CLOSED;
+    fetch(SB.url + "/rest/v1/" + HDB_TABLE + "?mes=eq." + encodeURIComponent(mes), {
+      method: "PATCH", headers: sbHeaders({"Content-Type": "application/json", Prefer: "return=minimal"}),
+      body: JSON.stringify({cerrado: val, updated_at: new Date().toISOString()})
+    }).then(function(res){
+      if (!res.ok) return res.text().then(function(t){ throw new Error("HTTP " + res.status + " " + t.slice(0,140)); });
+      hdbRows.forEach(function(r, i){ r.cerrado = i < n; });
+      CLOSED = n;
+      buildHistTable(); recalcHist(); renderKpis(); hdbRenderTable(); hdbSetStatus("on", "Conectado · " + hdbRows.length + " meses");
+      showToast(val ? hdbMesLabel(mes) + " cerrado" : hdbMesLabel(mes) + " reabierto", "ok");
+    }).catch(function(e){ showToast("No se pudo " + (val ? "cerrar" : "reabrir") + " el mes: " + e.message, "err"); });
   }
 
   function hdbRecalc(r){
@@ -1617,6 +1659,11 @@ window.addEventListener("error", function(e){
       .then(function(data){
         hdbRows = data;
         hdbRows.forEach(hdbRecalc);
+        if (hdbRows.length === 12){   // el cierre manda desde margen_historico: mantiene la tabla principal al día
+          var cn = 0;
+          while (cn < 12 && hdbRows[cn].cerrado === true) cn++;
+          if (cn !== CLOSED){ CLOSED = cn; buildHistTable(); recalcHist(); renderKpis(); }
+        }
         hdbRenderTable();
         hdbSetStatus("on", "Conectado · " + hdbRows.length + " meses");
       })
