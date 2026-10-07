@@ -158,7 +158,7 @@
   .best { background: var(--pos-bg) !important; }
   .worst { background: var(--neg-bg) !important; }
 
-  .simcols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 16px; }
+  .simcols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 16px; }
   @media (max-width: 900px) { .simcols { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 520px) { .simcols { grid-template-columns: 1fr; } }
   .simcol h3 { font-size: 13.5px; font-weight: 600; margin: 0 0 10px; }
@@ -314,7 +314,7 @@
   <!-- NUEVA SIMULACIÓN -->
   <section class="panel" id="panel-sim">
     <div class="card" id="simCard">
-      <h2>Nueva simulación Set–Dic</h2>
+      <h2>Nueva simulación Oct–Dic</h2>
       <div class="simcols" id="simCols"></div>
       <div class="ref refppc" id="refPpcNote"></div>
       <button class="addbtn" id="btnSimular" style="border-style:solid;border-color:var(--accent);color:var(--accent-ink);font-weight:600;">Simular →</button>
@@ -663,14 +663,13 @@ window.addEventListener("error", function(e){
   buildHistTable();
   recalcHist();
 
-  // ---------- NUEVA SIMULACIÓN (Set–Dic) ----------
+  // ---------- NUEVA SIMULACIÓN (Oct–Dic) ----------
   function avgOf(arr){
     var vals = arr.slice(0,8).filter(function(v){ return v && v!==0; });
     if (!vals.length) return 0;
     return vals.reduce(function(a,b){ return a+b; }, 0) / vals.length;
   }
   var projMonths = [
-    {idx:8,  name:"Setiembre"},
     {idx:9,  name:"Octubre"},
     {idx:10, name:"Noviembre"},
     {idx:11, name:"Diciembre"}
@@ -1011,7 +1010,7 @@ window.addEventListener("error", function(e){
 
   var pendingDraft = null, confirmingSave = false, simDirty = false;   // simulación aún no guardada como vigente
 
-  // Simulación = proyección vigente con los meses Set–Dic reemplazados por lo ingresado en el panel
+  // Simulación = proyección vigente con los meses Oct–Dic reemplazados por lo ingresado en el panel
   function buildDraft(){
     var dh = deepCopy(state.hist);
     projMonths.forEach(function(pm){
@@ -1049,10 +1048,10 @@ window.addEventListener("error", function(e){
     var d = pendingDraft, h = "";
     h += "<div class='dlghead'><h3>✔ Simulación completa</h3><button type='button' class='rowbtn' data-act='close' aria-label='Cerrar'>✕</button></div>";
     if (!d || !d.months.length){
-      h += "<p class='dlgnote'>No hay datos cargados en Setiembre–Diciembre. Ingresa volumen y primas (o configura buques) y vuelve a simular.</p>";
+      h += "<p class='dlgnote'>No hay datos cargados en Octubre–Diciembre. Ingresa volumen y primas (o configura buques) y vuelve a simular.</p>";
     } else {
       var tv = 0, tcab = 0, tm = 0, tdt = 0, tdelta = 0;
-      h += "<p class='donesub'>Setiembre–Diciembre · todavía no es la proyección vigente · Δ = diferencia del margen importado frente a la vigente</p>";
+      h += "<p class='donesub'>Octubre–Diciembre · todavía no es la proyección vigente · Δ = diferencia del margen importado frente a la vigente</p>";
       h += "<div class='tablewrap'><table class='mono'><thead><tr><th>Mes</th><th>Volumen (miles TM)</th><th>Cabotaje Pluspetrol (miles TM)</th><th>Precio Referencia</th><th>Costo Importado</th><th>Margen unit.</th><th>Margen del importado (miles US$)</th><th>DELTA VS 40 total (miles US$)</th><th>Δ vs vigente (miles US$)</th></tr></thead><tbody>";
       d.months.forEach(function(m){
         var c = m.c, delta = c.mUS - histCalc(m.idx, state.hist).mUS;
